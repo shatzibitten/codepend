@@ -159,6 +159,32 @@ test('the share-safety filter catches everything docs/PRIVACY.md promises it cat
   for (const t of mustPass) assert.equal(isRisky(t), false, `should be allowed: ${t}`);
 });
 
+test('a quote share card keeps the funny body copy under the quotation', () => {
+  const src = fs.readFileSync(path.join(ROOT, 'src', 'app', 'app.js'), 'utf8');
+  const found = src.match(/function shareCopy\(m, opts\) \{[\s\S]*?\n\}\n\nlet drawSeq/);
+  assert.ok(found, 'shareCopy must remain available to the share-card renderer');
+  const fn = found[0].replace(/\n\nlet drawSeq$/, '');
+  // Exercise the real browser function without introducing a DOM dependency
+  // into the zero-dependency Node test suite.
+  // eslint-disable-next-line no-new-func
+  const shareCopy = new Function(
+    'shareState', 'isRisky', 'trimQuote',
+    `${fn}; return shareCopy;`,
+  )({ hideProject: false }, () => false, (s) => String(s));
+  const got = shareCopy({
+    eyebrow: '407 TIMES',
+    title: 'You have said this 407 times.',
+    body: 'Across 11 projects and 20 different models. The tools changed. You didn’t.',
+    quote: { text: 'сделай', who: 'you' },
+  }, { hideProject: false });
+
+  assert.equal(got.quote.text, 'сделай');
+  assert.equal(
+    got.line,
+    'Across 11 projects and 20 different models. The tools changed. You didn’t.',
+  );
+});
+
 /* ── seam: the video export must always terminate ──────────────────────── */
 
 /** A canvas/context stub that swallows every 2D call `paintFrame` makes. */

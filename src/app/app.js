@@ -1723,8 +1723,13 @@ function shareCopy(m, opts) {
     out.line = (dupes ? clean(m.body) : title) || clean(m.body) || title;
   } else if (m.quote && m.quote.text) {
     const q = clean(trimQuote(m.quote.text));
-    if (q) out.quote = { text: q, who: m.quote.who === 'agent' ? 'it said' : 'you said' };
-    else out.line = clean(m.title);
+    if (q) {
+      out.quote = { text: q, who: m.quote.who === 'agent' ? 'it said' : 'you said' };
+      // The body is the punchline on quote cards ("The tools changed. You
+      // didn't.", "Sometimes you were."). The feed always shows it, so dropping
+      // it from the exported PNG turns the joke into an unexplained quotation.
+      out.line = clean(m.body) || clean(m.title);
+    } else out.line = clean(m.title) || clean(m.body);
   } else {
     out.headline = clean(m.title);
     out.line = clean(m.tagline) || clean(m.body);
