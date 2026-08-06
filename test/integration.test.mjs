@@ -269,6 +269,23 @@ test('the archetype is the finale the video ends on', () => {
   assert.ok(last.duration > longestMid, 'the finale is held longer than any card before it');
 });
 
+test('the finale gives its controls the pointer instead of the story tap zones', () => {
+  // A child with pointer-events:auto is still unreachable when its parent has
+  // pointer-events:none. Both halves of this contract are required: disable the
+  // overlay zones and restore hit-testing on the active finale slide.
+  const css = fs.readFileSync(path.join(ROOT, 'src', 'app', 'app.css'), 'utf8');
+  assert.match(
+    css,
+    /\.wrapped\.is-last\s+\.wrapped__zone\s*\{[^}]*pointer-events:\s*none;/,
+    'the finale must disable both navigation zones',
+  );
+  assert.match(
+    css,
+    /\.wrapped\.is-last\s+\.wslide\.is-on\s*\{[^}]*pointer-events:\s*auto;/,
+    'the finale slide must restore pointer events for Save video and its sibling controls',
+  );
+});
+
 function withTimeout(promise, ms) {
   return Promise.race([
     promise,

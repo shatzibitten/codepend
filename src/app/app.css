@@ -682,7 +682,7 @@ html { scroll-behavior: smooth; }
 }
 .wrapped__zone--l { left: 0; width: 35%; }
 .wrapped__zone--r { right: 0; width: 65%; }
-.wrapped.is-last .wrapped__zone--r { pointer-events: none; }
+.wrapped.is-last .wrapped__zone { pointer-events: none; }
 
 .wrapped__foot {
   position: absolute; z-index: 5; left: 0; right: 0; bottom: calc(14px + var(--safe-b));
@@ -850,9 +850,12 @@ html { scroll-behavior: smooth; }
    tappable for advancing, which is how a story should behave. */
 /* The slide paints above the zones but does not take the pointer: a tap on the
    art or the copy falls through and advances the story, exactly as before.
-   Only the controls take it back. */
+   On the finale both zones are disabled and the active slide takes the pointer
+   back. `pointer-events: auto` on a child cannot escape a `none` parent, which
+   is why the earlier controls-only override still hit Previous slide. */
 .wslide { z-index: 2; }
 .wslide.is-on { pointer-events: none; }
+.wrapped.is-last .wslide.is-on { pointer-events: auto; }
 .wslide__cta,
 .wslide a,
 .wslide button { pointer-events: auto; }
