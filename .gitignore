@@ -1,0 +1,35 @@
+# codepend never wants your data in git. Nor its own output.
+*.html
+!src/app/index.html
+*.codepend.json
+codepend-payload.json
+.codepend/
+.cache/
+
+# node
+node_modules/
+npm-debug.log*
+package-lock.json
+.npm/
+
+# os / editors
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+
+# local
+.env
+.env.*
+coverage/
+dist/
+tmp/
+.preview/
+
+# The demo page and its link card are BUILT, not committed: .github/workflows/pages.yml
+# runs `make-og` + `build-demo` on every push to main and deploys the result. Committing
+# them means a stale page in the repo that disagrees with the one that is actually live —
+# and `og.png` is 125 KB of binary that would be rewritten on every content change.
+# Build it locally with `npm run og && npm run demo`.
+site/

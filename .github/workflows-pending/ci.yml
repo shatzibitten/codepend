@@ -1,0 +1,127 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: node ${{ matrix.node }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # 18 is the floor `engines` promises and 24 is current. Anything that needs a
+        # newer runtime than 18 (Cursor's adapter wants 22+) has to degrade, not fail:
+        # the whole matrix is required, so a test that only passes on 22+ breaks 18/20.
+        node: ['18', '20', '22', '24']
+        os: [ubuntu-latest]
+        include:
+          # One macOS run: path handling and `open` differ there, and half the
+          # users are on a Mac.
+          - node: '22'
+            os: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      # No `npm ci` on purpose: there is nothing to install. If this ever
+      # becomes necessary, the project has lost the plot.
+      - name: assert zero dependencies
+        run: |
+          node -e "
+            const p = require('./package.json');
+            const deps = Object.keys(p.dependencies || {});
+            if (deps.length) { console.error('runtime dependencies found: ' + deps.join(', ')); process.exit(1); }
+            console.log('0 runtime dependencies');
+          "
+
+      - name: lint (parse + no-network check)
+        run: npm run lint
+
+      - name: test
+        run: npm test
+
+      - name: cli smoke test
+        run: |
+          node bin/codepend.js --version
+          node bin/codepend.js --help
+          # An empty corpus must exit cleanly with an explanation, not a stack trace.
+          node bin/codepend.js --claude-dir "$RUNNER_TEMP/nope" --codex-dir "$RUNNER_TEMP/nope" --no-open --quiet || test $? -eq 1
+
+  offline:
+    name: the page never phones home
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # The privacy promise, enforced. bin/ is exempt for exactly one reason:
+      # the optional `--serve` listener, which binds 127.0.0.1.
+      - name: no network APIs under src/
+        run: |
+          if grep -rnE "fetch\(|node:https?|node:net|node:dgram|XMLHttpRequest|WebSocket|navigator\.sendBeacon" src/; then
+            echo "::error::src/ must never touch the network"
+            exit 1
+          fi
+          echo "src/ is clean"
+
+      - name: no external URLs in the browser bundle
+        run: |
+          if grep -rnE "<script[^>]+src=|<link[^>]+href=\"http|@import url\(http|src=\"https?:" src/app/; then
+            echo "::error::the generated page must be fully self-contained"
+            exit 1
+          fi
+          echo "src/app/ loads nothing from the network"
+
+  demo:
+    name: the demo page and the og card still build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # Pages deploys from main without review, so the artifact has to be proven here,
+      # on the pull request, rather than discovered broken after it is live.
+      - name: build
+        run: |
+          node tools/build-demo.mjs
+          node tools/make-og.mjs
+
+      # make-og re-reads its own PNG and checks the CRCs; this re-checks the header
+      # independently, so a silently-truncated file cannot pass both.
+      - name: the card is a 1200x630 png
+        run: |
+          node -e "
+            const fs = require('fs');
+            const b = fs.readFileSync('site/og.png');
+            const sig = Buffer.from([0x89,0x50,0x4e,0x47,0x0d,0x0a,0x1a,0x0a]);
+            if (!b.subarray(0,8).equals(sig)) { console.error('not a png'); process.exit(1); }
+            if (b.toString('latin1',12,16) !== 'IHDR') { console.error('no IHDR'); process.exit(1); }
+            const w = b.readUInt32BE(16), h = b.readUInt32BE(20);
+            if (w !== 1200 || h !== 630) { console.error('og.png is ' + w + 'x' + h); process.exit(1); }
+            console.log('og.png ' + w + 'x' + h + ', ' + (b.length/1024).toFixed(1) + ' KB');
+          "
+
+      - name: the demo says it is a demo, and still loads nothing
+        run: |
+          grep -q 'class="demo-tag"' site/index.html || { echo '::error::the demo badge is gone'; exit 1; }
+          grep -q 'summary_large_image' site/index.html || { echo '::error::twitter card meta is gone'; exit 1; }
+          if grep -nE '<script[^>]+src=|<img[^>]+src="https?:' site/index.html; then
+            echo "::error::the demo page must stay self-contained"
+            exit 1
+          fi
+          echo "demo page is self-contained and labelled"

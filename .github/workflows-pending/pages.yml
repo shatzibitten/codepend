@@ -1,0 +1,82 @@
+# Builds the zero-install demo and publishes it to GitHub Pages.
+#
+# The demo is the top of the funnel: today you have to install Node and run a command
+# before you can tell what this project even is, which loses everyone who sees the link
+# on a phone. This workflow is what removes that wall.
+#
+# One-time setup by a maintainer: Settings → Pages → Build and deployment →
+# Source = "GitHub Actions". Without that, deploy-pages fails with a 404. See docs/DEMO.md.
+
+name: pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# GITHUB_TOKEN starts read-only; `pages: write` lets deploy-pages publish and
+# `id-token: write` lets it prove the artifact came from this workflow run.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Never let two deploys race. `cancel-in-progress: false` on purpose — a superseded
+# deploy is allowed to finish rather than leave Pages half-updated.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: build the demo
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # Nothing to install — the project has no dependencies, dev or otherwise.
+      - name: configure pages
+        id: pages
+        uses: actions/configure-pages@v5
+
+      # The OG image URL has to be absolute, and the origin is only known here.
+      # `base_url` is the real deployed URL (user/org pages, custom domain, project
+      # path — all of it), so nothing about the final address is hardcoded.
+      - name: build the demo page and the link card
+        run: |
+          node tools/make-og.mjs
+          node tools/build-demo.mjs --base-url "${{ steps.pages.outputs.base_url }}"
+
+      - name: sanity-check the artifact
+        run: |
+          test -s site/index.html || { echo "::error::site/index.html is missing or empty"; exit 1; }
+          test -s site/og.png     || { echo "::error::site/og.png is missing or empty";    exit 1; }
+          grep -q 'class="demo-tag"' site/index.html \
+            || { echo "::error::the demo is not labelled as a demo"; exit 1; }
+          grep -q 'og:image' site/index.html \
+            || { echo "::error::og:image is missing"; exit 1; }
+          ls -lh site/
+
+      # A .nojekyll file stops Pages running Jekyll over the output. Harmless here
+      # (nothing is underscore-prefixed) but it also skips a build step we do not want.
+      - name: disable jekyll
+        run: touch site/.nojekyll
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    name: deploy to pages
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark light">
+<meta name="robots" content="noindex">
+<meta name="description" content="__DESC__">
+<title>__TITLE__</title>
+<link rel="icon" href="__FAVICON__">
+<script>__BOOT__</script>
+<style>__CSS__</style>
+</head>
+<body>
+<div class="grain" aria-hidden="true"></div>
+
+<a class="skip" href="#feed">Skip to the feed</a>
+
+<header class="topbar" id="topbar">
+  <div class="topbar__in">
+    <a class="wordmark" href="#/" aria-label="codepend — back to top">
+      <span class="mark" id="mark" aria-hidden="true"></span>
+      <span class="wordmark__t">codepend</span>
+    </a>
+    <div class="topbar__actions">
+      <button class="btn btn--ghost js-wrapped" type="button" aria-label="Play Wrapped">
+        <span class="btn__ic" aria-hidden="true">▶</span><span class="btn__t">Wrapped</span>
+      </button>
+      <button class="btn btn--icon js-theme" type="button" aria-label="Switch colour theme" title="Switch colour theme">
+        <span aria-hidden="true">◐</span>
+      </button>
+    </div>
+  </div>
+  <div class="topbar__bar"><i id="scrollbar"></i></div>
+</header>
+
+<nav class="filters" id="filters" aria-label="Filter memories"></nav>
+
+<main class="feed" id="feed"></main>
+
+<footer class="footer">
+  <p class="footer__promise"><strong>Everything here was computed on your machine.</strong>
+    No network requests, no telemetry, nothing uploaded. This file works with your Wi-Fi off.</p>
+  <p class="footer__cmd"><code>npx codepend</code></p>
+  <p class="footer__meta" id="footmeta"></p>
+</footer>
+
+<div class="dock" id="dock" hidden>
+  <button class="dock__b js-wrapped" type="button"><span aria-hidden="true">▶</span> Wrapped</button>
+  <span class="dock__sep" aria-hidden="true"></span>
+  <button class="dock__b dock__b--hero js-dockvideo" type="button" hidden><span aria-hidden="true">⬤</span> Save video</button>
+  <span class="dock__sep js-dockvideo-sep" aria-hidden="true" hidden></span>
+  <button class="dock__b js-share" type="button"><span aria-hidden="true">⇪</span> Share</button>
+</div>
+
+<dialog class="wrapped" id="wrapped" aria-label="codepend Wrapped">
+  <div class="wrapped__stage" id="wstage">
+    <div class="wrapped__prog" id="wprog" role="progressbar" aria-label="Story progress"></div>
+    <button class="wrapped__x js-wclose" type="button" aria-label="Close Wrapped">✕</button>
+    <div class="wrapped__slides" id="wslides" aria-live="polite"></div>
+    <button class="wrapped__zone wrapped__zone--l js-wprev" type="button" aria-label="Previous slide"></button>
+    <button class="wrapped__zone wrapped__zone--r js-wnext" type="button" aria-label="Next slide"></button>
+    <div class="wrapped__foot"><span class="wrapped__hint" id="whint"></span></div>
+  </div>
+</dialog>
+
+<dialog class="sheet" id="share" aria-label="Share a memory">
+  <div class="sheet__in">
+    <div class="sheet__grab" aria-hidden="true"></div>
+    <div class="sheet__head">
+      <h2 class="sheet__title">Share card</h2>
+      <button class="btn btn--icon js-sclose" type="button" aria-label="Close share sheet"><span aria-hidden="true">✕</span></button>
+    </div>
+    <div class="sheet__preview"><canvas id="scanvas" aria-label="Share card preview"></canvas></div>
+    <div class="sheet__row" role="group" aria-label="Card size">
+      <button class="seg is-on" data-preset="wide" type="button">Wide · 1200×675</button>
+      <button class="seg" data-preset="tall" type="button">Tall · 1080×1350</button>
+    </div>
+    <label class="toggle"><input type="checkbox" id="hideproj"> <span>Hide project names</span></label>
+    <p class="sheet__note" id="snote">Nothing is uploaded. The image is drawn in this page and saved by your browser.</p>
+    <div class="sheet__row sheet__row--cta">
+      <button class="btn btn--solid js-dl" type="button">Download PNG</button>
+      <button class="btn js-copy" type="button">Copy image</button>
+    </div>
+  </div>
+</dialog>
+
+<noscript>
+  <div class="ns">__NOSCRIPT__</div>
+</noscript>
+
+<script type="application/json" id="codepend-data">__DATA__</script>
+<script type="module">__JS__</script>
+</body>
+</html>

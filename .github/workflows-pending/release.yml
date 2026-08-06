@@ -1,0 +1,83 @@
+# Publishes to npm with provenance when a `v*` tag is pushed.
+#
+# Provenance is a cheap, real trust signal for a tool whose whole pitch is that it reads
+# your private session logs and uploads nothing. It makes npm show a verified link from
+# the published tarball back to this exact workflow run and commit, so "runs locally,
+# uploads nothing" is something a stranger can check instead of take on faith.
+#
+# Three things have to be true or `--provenance` fails:
+#   1. the repository is PUBLIC          (as of writing, shatzibitten/codepend does
+#                                         not exist yet — it must be created public)
+#   2. package.json has a `repository` field   (it does)
+#   3. the job has `id-token: write`      (below)
+# See docs/DEMO.md for the one-time NPM_TOKEN setup.
+
+name: release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Pack and verify, but do not publish'
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  id-token: write        # required for provenance — this is the whole point
+
+jobs:
+  publish:
+    name: publish to npm
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
+
+      # A tag is not a review. Nothing ships that has not just passed on the machine
+      # that is about to publish it.
+      - name: lint and test
+        run: |
+          npm run lint
+          npm test
+
+      # A tag that disagrees with package.json publishes a version nobody asked for and
+      # cannot be taken back — npm does not allow re-publishing a version.
+      - name: the tag and package.json agree
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          PKG="$(node -p "require('./package.json').version")"
+          if [ "$TAG" != "$PKG" ]; then
+            echo "::error::tag $GITHUB_REF_NAME says $TAG but package.json says $PKG"
+            exit 1
+          fi
+          echo "publishing $PKG"
+
+      - name: provenance preconditions
+        run: |
+          node -e "
+            const p = require('./package.json');
+            const url = p.repository && (p.repository.url || p.repository);
+            if (!url) { console.error('package.json needs a repository field for provenance'); process.exit(1); }
+            console.log('repository: ' + url);
+          "
+          if [ "${{ github.event.repository.private }}" = "true" ]; then
+            echo "::error::npm provenance requires a public repository"
+            exit 1
+          fi
+
+      - name: what would ship
+        run: npm pack --dry-run
+
+      - name: publish
+        if: startsWith(github.ref, 'refs/tags/v') && inputs.dry_run != true
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

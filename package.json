@@ -1,0 +1,69 @@
+{
+  "name": "codepend",
+  "version": "0.1.0",
+  "description": "Stats, On This Day memories and a Wrapped-style year in review for Claude Code, Codex and Cursor. Reads your local agent history and builds one self-contained HTML page. Runs locally, uploads nothing, zero dependencies.",
+  "type": "module",
+  "bin": {
+    "codepend": "bin/codepend.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "bin/",
+    "src/",
+    "tools/",
+    "docs/PRIVACY.md",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "start": "node bin/codepend.js",
+    "test": "node --test",
+    "lint": "node tools/syntax-check.mjs",
+    "check": "npm run lint && npm test",
+    "demo": "node tools/build-demo.mjs",
+    "og": "node tools/make-og.mjs"
+  },
+  "keywords": [
+    "claude-code",
+    "claude",
+    "codex",
+    "openai-codex",
+    "cursor",
+    "ai-agents",
+    "coding-agent",
+    "agent-history",
+    "stats",
+    "wrapped",
+    "spotify-wrapped",
+    "year-in-review",
+    "on-this-day",
+    "history",
+    "memories",
+    "analytics",
+    "usage-stats",
+    "token-usage",
+    "cli",
+    "developer-tools",
+    "local-first",
+    "offline",
+    "privacy",
+    "zero-dependencies",
+    "jsonl",
+    "data-visualization",
+    "visualization"
+  ],
+  "author": "Alex Polorotov",
+  "license": "MIT",
+  "homepage": "https://github.com/shatzibitten/codepend#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shatzibitten/codepend.git"
+  },
+  "bugs": {
+    "url": "https://github.com/shatzibitten/codepend/issues"
+  },
+  "dependencies": {},
+  "sideEffects": false
+}
