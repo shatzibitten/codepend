@@ -677,8 +677,20 @@ html { scroll-behavior: smooth; }
 }
 .vexport .btn { justify-self: start; }
 
+/* The tap zones sit UNDER the slides and catch whatever falls through them.
+ *
+ * They used to sit on top at z-index 3, which put them over the finale's
+ * buttons: pressing Save video went back a slide. Raising the buttons to
+ * z-index 4 did not fix it and could not have — `.wslide` animates its opacity,
+ * and an element with opacity below 1 creates a stacking context, so the
+ * buttons' z-index is confined inside the slide and can never outrank a
+ * sibling of that slide.
+ *
+ * Paint order decides it instead, which no stacking context can override: the
+ * zones are below, the slide is above and transparent to the pointer, and only
+ * the things worth clicking take the pointer back. */
 .wrapped__zone {
-  position: absolute; z-index: 3; top: 0; bottom: 0;
+  position: absolute; z-index: 1; top: 0; bottom: 0;
   background: transparent; -webkit-tap-highlight-color: transparent;
 }
 .wrapped__zone--l { left: 0; width: 35%; }
@@ -849,7 +861,14 @@ html { scroll-behavior: smooth; }
    element bypasses hit-testing entirely; only a real pointer finds it.
    The CTA row is lifted above the zones. Everything else on the slide stays
    tappable for advancing, which is how a story should behave. */
-.wslide__cta { position: relative; z-index: 4; }
+/* The slide paints above the zones but does not take the pointer: a tap on the
+   art or the copy falls through and advances the story, exactly as before.
+   Only the controls take it back. */
+.wslide { z-index: 2; }
+.wslide.is-on { pointer-events: none; }
+.wslide__cta,
+.wslide a,
+.wslide button { pointer-events: auto; }
 </style>
 <!-- link preview -->
 <meta property="og:type" content="website">
