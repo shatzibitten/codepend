@@ -690,7 +690,16 @@ function prettyPath(p) {
 }
 
 // Only run when invoked as the CLI — `parseArgs` is imported by the tests.
-const invokedDirectly = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+// npm exposes bins through a symlink in node_modules/.bin, so compare the real
+// paths instead of the spelling Node received in process.argv[1].
+let invokedDirectly = false;
+if (process.argv[1]) {
+  try {
+    invokedDirectly = fs.realpathSync(process.argv[1]) === fs.realpathSync(new URL(import.meta.url));
+  } catch {
+    // A missing argv path cannot be this module's executable.
+  }
+}
 
 if (invokedDirectly) {
   const style = makeStyle(process.env, process.stderr);

@@ -1,8 +1,24 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { parseArgs } from '../bin/codepend.js';
 import { parseSince, resolveConfig, normalizeClaudeDir, normalizeCodexDir } from '../src/config.js';
+
+test('the installed-style bin symlink runs the CLI', (t) => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'codepend-bin-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+  const link = path.join(dir, 'codepend');
+  fs.symlinkSync(fileURLToPath(new URL('../bin/codepend.js', import.meta.url)), link);
+
+  const result = spawnSync(process.execPath, [link, '--version'], { encoding: 'utf8' });
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout.trim(), '0.1.0');
+});
 
 test('parseArgs: defaults are empty (config applies them, not the parser)', () => {
   assert.deepEqual(parseArgs([]), { _: [] });
