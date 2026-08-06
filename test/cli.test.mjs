@@ -17,7 +17,12 @@ test('the installed-style bin symlink runs the CLI', (t) => {
 
   const result = spawnSync(process.execPath, [link, '--version'], { encoding: 'utf8' });
   assert.equal(result.status, 0, result.stderr);
-  assert.equal(result.stdout.trim(), '0.1.0');
+  // Read the expected version rather than hardcoding it: this test exists to
+  // prove the symlink resolves, not to be edited on every release.
+  const { version } = JSON.parse(
+    fs.readFileSync(fileURLToPath(new URL('../package.json', import.meta.url)), 'utf8'),
+  );
+  assert.equal(result.stdout.trim(), version);
 });
 
 test('parseArgs: defaults are empty (config applies them, not the parser)', () => {
