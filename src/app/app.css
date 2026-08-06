@@ -187,7 +187,11 @@ html { scroll-behavior: smooth; }
 .btn--icon { width: 34px; padding: 0; background: transparent; font-size: 15px; }
 .btn--icon:hover { background: var(--surface-2); }
 .btn--solid { background: var(--ink-0); color: var(--ink-inv); }
-.btn--solid:hover { background: var(--ink-0); filter: brightness(1.06); }
+/* `.btn:hover` sets `color: var(--ink-0)` at (0,2,0) and out-specifies
+   `.btn--solid`'s (0,1,0) ink-inv — so every solid button turned ink-on-ink and
+   vanished under the cursor. Download PNG, Save the video and Save archetype
+   were all blank white pills on hover. */
+.btn--solid:hover { background: var(--ink-0); color: var(--ink-inv); filter: brightness(1.06); }
 .btn__ic { font-size: 9px; opacity: .8; }
 @media (max-width: 400px) { .btn__t { display: none; } .btn--ghost { padding: 0 12px; } }
 
@@ -839,7 +843,9 @@ html { scroll-behavior: smooth; }
    travels, and a screenshot is not. It was a one-word button in the middle of a
    row of three, which is not how you label the main action. */
 .dock__b--hero { background: var(--ink-0); color: var(--paper); font-weight: 650; }
-.dock__b--hero:hover { filter: brightness(.94); }
+/* Same specificity trap as .btn--solid: `.dock__b:hover` overrides the hero's
+   own background, so the primary dock button lost its fill under the cursor. */
+.dock__b--hero:hover { background: var(--ink-0); filter: brightness(.94); }
 
 /* The story's tap zones sit at z-index 3 and cover the whole stage; the slide
    body sits at 1. So every button on the finale — Save video, Share card,
@@ -859,3 +865,153 @@ html { scroll-behavior: smooth; }
 .wslide__cta,
 .wslide a,
 .wslide button { pointer-events: auto; }
+
+/* ── 9. #/me — the archetype, full screen ─────────────────────────────────
+
+   The archetype used to be card six of thirty, and its image came out of the
+   same share sheet that has to serve quotes, stats and charts. It is the one
+   thing people post, so it gets its own screen and its own verb: one enormous
+   name, one line, the numbers, and a button that says exactly what it does.
+   ------------------------------------------------------------------------ */
+
+.me {
+  position: fixed; inset: 0; z-index: 90;
+  width: 100vw; max-width: 100vw; height: 100dvh; max-height: 100dvh;
+  margin: 0; padding: 0; border: 0; overflow: hidden;
+  background: var(--a-bg); color: var(--ink-0);
+}
+.me::backdrop { background: #000; }
+.me__art { position: absolute; inset: 0; z-index: 0; }
+.me__art svg { width: 100%; height: 100%; display: block; }
+
+/* One vertical scrim, the same shape the exported card paints — the screen and
+   the file must not disagree about what the artwork looks like behind type. */
+.me__scrim {
+  position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  background: linear-gradient(to bottom,
+    rgb(var(--scrim-color) / .58) 0%,
+    rgb(var(--scrim-color) / .14) 24%,
+    rgb(var(--scrim-color) / .70) 58%,
+    rgb(var(--scrim-color) / .95) 100%);
+}
+
+.me__x {
+  position: absolute; z-index: 3; top: calc(var(--safe-t) + 12px); right: 12px;
+  width: 40px; height: 40px; border-radius: 50%;
+  display: grid; place-items: center;
+  color: var(--ink-0); background: rgb(var(--scrim-color) / .5);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  font-size: 15px; opacity: .78;
+  transition: opacity var(--t-fast) var(--e-out), transform 90ms var(--e-snap);
+}
+.me__x:hover { opacity: 1; }
+.me__x:active { transform: scale(.94); }
+
+.me__scroll {
+  position: relative; z-index: 2; height: 100%;
+  overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
+}
+.me__in {
+  box-sizing: border-box; min-height: 100dvh;
+  display: flex; flex-direction: column; justify-content: flex-end;
+  max-width: 620px; margin-inline: auto;
+  padding: calc(var(--safe-t) + 78px) var(--pad) calc(var(--safe-b) + 30px);
+}
+
+.me__eyebrow { color: var(--ink-0); opacity: .58; }
+.me__name {
+  margin-top: 12px;
+  font: 800 clamp(42px, 12.6vw, 92px)/0.96 var(--f-display);
+  letter-spacing: -.042em; color: var(--ink-0); text-wrap: balance;
+}
+.me__tagline {
+  margin-top: 18px; max-width: 22ch;
+  font: italic 400 clamp(19px, 5.2vw, 26px)/1.28 var(--f-quote);
+  color: var(--ink-0); opacity: .9;
+}
+.me__blurb {
+  margin-top: 16px; max-width: 42ch;
+  font-size: var(--t-body); line-height: 1.55; color: var(--ink-0); opacity: .76;
+}
+
+.me__stats {
+  margin-top: 26px; padding-top: 18px; border-top: 1px solid var(--hairline);
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(70px, 1fr)); gap: 16px 10px;
+}
+.me__cell { display: grid; gap: 4px; }
+.me__cell b {
+  font: 800 clamp(21px, 6vw, 30px)/1 var(--f-display);
+  letter-spacing: -.03em; color: var(--ink-0); font-variant-numeric: tabular-nums;
+}
+.me__cell span {
+  font: 600 var(--t-micro)/1 var(--f-text); letter-spacing: .1em;
+  text-transform: uppercase; color: var(--ink-0); opacity: .55;
+}
+
+.me__act { margin-top: 30px; display: grid; gap: 12px; }
+/* The one button this screen exists for. */
+.me__save {
+  width: 100%; min-height: 60px; border-radius: 18px;
+  font: 700 17px/1 var(--f-display); letter-spacing: -.012em; gap: 10px;
+  box-shadow: 0 14px 44px rgb(0 0 0 / .34);
+}
+.me__save-ic { font-size: 15px; opacity: .7; }
+a.btn, .card__cta { text-decoration: none; cursor: pointer; }
+.me__save[aria-disabled="true"] { opacity: .55; }
+.me__save[aria-disabled="true"]:active { transform: none; }
+.me__fmt { display: flex; gap: 8px; }
+.me__fmt .seg {
+  display: grid; align-content: center; gap: 3px;
+  min-height: 46px; padding: 6px 4px; line-height: 1.1;
+}
+.me__fmt .seg i {
+  font: 600 10px/1 var(--f-text); font-style: normal;
+  opacity: .62; font-variant-numeric: tabular-nums;
+}
+.me__note { color: var(--ink-0); opacity: .62; font-size: 12px; line-height: 1.5; }
+
+/* Handed over, not silently downloaded: the thumbnail is the proof the PNG
+   exists, and the button above it is a real <a download> the person clicks. */
+.me__proof { display: flex; align-items: center; gap: 14px; }
+.me__proofcol { flex: 1 1 auto; display: grid; gap: 10px; justify-items: start; }
+.me__prev {
+  flex: 0 0 auto; width: 74px; max-height: 132px; height: auto;
+  border-radius: 10px; display: block; background: var(--surface-2);
+  box-shadow: 0 10px 30px rgb(0 0 0 / .42), inset 0 0 0 1px var(--hairline);
+}
+.me__prev[hidden] { display: none; }
+
+.me__more { margin-top: 24px; display: flex; gap: 8px; flex-wrap: wrap; }
+.me__foot { margin-top: 18px; color: var(--ink-0); opacity: .45; font-size: 11px; }
+.me__foot code { font: 600 11px/1 var(--f-mono); }
+
+@media (min-width: 760px) {
+  .me__in { max-width: 700px; justify-content: center; padding-block: 8vh calc(var(--safe-b) + 8vh); }
+  .me__name { font-size: clamp(64px, 7.6vw, 108px); }
+  .me__act { max-width: 420px; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .me[open] .me__in > * { animation: mein 620ms var(--e-out) backwards; }
+  .me[open] .me__eyebrow { animation-delay: 40ms; }
+  .me[open] .me__name    { animation-delay: 90ms; }
+  .me[open] .me__tagline { animation-delay: 170ms; }
+  .me[open] .me__blurb   { animation-delay: 230ms; }
+  .me[open] .me__stats   { animation-delay: 290ms; }
+  .me[open] .me__act     { animation-delay: 350ms; }
+  @keyframes mein { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+}
+
+/* The way into the screen from the feed. The archetype card no longer carries
+   the generic ⇪ — there is exactly one path to an archetype image. */
+.card__cta {
+  align-self: flex-start; margin-top: 18px;
+  display: inline-flex; align-items: center; gap: 8px;
+  min-height: 40px; padding: 0 16px; border-radius: var(--r-chip);
+  background: var(--ink-0); color: var(--ink-inv);
+  font: 700 var(--t-meta)/1 var(--f-text); letter-spacing: .01em;
+  transition: filter var(--t-fast) var(--e-out), transform 90ms var(--e-snap);
+}
+.card__cta:hover { filter: brightness(1.06); }
+.card__cta:active { transform: scale(.97); }
+.card__cta span { font-size: 11px; opacity: .7; }

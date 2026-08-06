@@ -2,7 +2,8 @@
    codepend — render.js
    Turns the buildMemories() payload into ONE self-contained HTML file.
 
-   Everything is inlined: the payload JSON, app.css, app.js, and src/art.js.
+   Everything is inlined: the payload JSON, app.css, app.js, src/art.js, and the
+   two modules app.js reaches through a global — video.js and archetype-card.js.
    No external requests of any kind — no CDN, no fonts, no analytics. The file
    must open from file:// with the network off. That promise is also printed
    in the footer, so it has to be literally true.
@@ -211,6 +212,7 @@ export function renderHTML(payload, opts) {
   const css = readFileSync(join(appDir, 'app.css'), 'utf8');
   const app = readFileSync(join(appDir, 'app.js'), 'utf8');
   const video = readFileSync(join(appDir, 'video.js'), 'utf8');
+  const card = readFileSync(join(appDir, 'archetype-card.js'), 'utf8');
 
   // Prefer the real art module; fall back to the bundled one so the renderer
   // is never blocked on it (and so `npx codepend` can't ship a blank page).
@@ -256,6 +258,24 @@ export function renderHTML(payload, opts) {
     "  videoSupported:  typeof videoSupported  !== 'undefined' ? videoSupported  : null,",
     "  pickCodec:       typeof pickCodec       !== 'undefined' ? pickCodec       : null,",
     "  videoFilename:   typeof videoFilename   !== 'undefined' ? videoFilename   : null,",
+    '};',
+    '})();',
+    '',
+    // The archetype card. Same bridge again, and it must be evaluated before
+    // app.js: app.js reads `globalThis.CODEPEND_ARCHETYPE_CARD` once, at the top
+    // level, and falls back to its own built-in drawing if the global is absent.
+    // A page that shipped these in the other order would silently ship the
+    // fallback — same button, different picture — so the order is load-bearing
+    // and there is a test that fails if this module goes missing.
+    '/* ---- src/app/archetype-card.js (inlined) ---- */',
+    'globalThis.CODEPEND_ARCHETYPE_CARD = (() => {',
+    stripExports(card),
+    'return {',
+    "  drawArchetypeCard:   typeof drawArchetypeCard   !== 'undefined' ? drawArchetypeCard   : null,",
+    "  archetypeLayout:     typeof archetypeLayout     !== 'undefined' ? archetypeLayout     : null,",
+    "  archetypeFilename:   typeof archetypeFilename   !== 'undefined' ? archetypeFilename   : null,",
+    "  safeText:            typeof safeText            !== 'undefined' ? safeText            : null,",
+    "  ARCHETYPE_PRESETS:   typeof ARCHETYPE_PRESETS   !== 'undefined' ? ARCHETYPE_PRESETS   : null,",
     '};',
     '})();',
     '',

@@ -208,7 +208,22 @@ function archetypeMemory() {
   };
 }
 const ARCHETYPE = archetypeMemory();
-if (ARCHETYPE) BY_ID.set(ARCHETYPE.id, ARCHETYPE);
+if (ARCHETYPE) {
+  BY_ID.set(ARCHETYPE.id, ARCHETYPE);
+  // detect.js usually emits the archetype as an ordinary memory too, and
+  // buildFeed() then declines to splice the synthesized one. That copy went
+  // through norm(), which knows nothing about `isArchetype` or `tagline` — so
+  // the card the feed actually showed was the archetype dressed as memory
+  // number six, with the generic ⇪ on it. One identity, wherever it came from.
+  for (const m of MEMORIES) {
+    if (m.id !== ARCHETYPE.id && m.type !== 'archetype') continue;
+    m.isArchetype = true;
+    if (!m.tagline) m.tagline = ARCHETYPE.tagline || (m.stat && m.stat.label) || null;
+    // The name and the line are the card; a stat block would set the name at
+    // 130px twice over.
+    m.stat = null;
+  }
+}
 
 /* ── feed ordering (MEMORY-CATALOG §7) ────────────────────────────────── */
 
@@ -431,7 +446,15 @@ function buildCard(m, i) {
 
   card.appendChild(body);
 
-  if (m.shareable) {
+  // The archetype does not get the generic ⇪. Its image comes from one place —
+  // the #/me screen — so the card carries a door instead of a duplicate.
+  if (m.isArchetype) {
+    const cta = h('a', {
+      class: 'card__cta', href: '#/me',
+      'aria-label': `Open ${m.title || 'your archetype'} full screen and save it`,
+    }, `${m.isCover ? 'Open your archetype' : 'See it full screen'} <span aria-hidden="true">→</span>`);
+    body.appendChild(cta);
+  } else if (m.shareable) {
     const b = h('button', { class: 'card__share', type: 'button', 'aria-label': `Make a share card from “${m.title || m.type}”` }, '<span aria-hidden="true">⇪</span>');
     b.addEventListener('click', () => openShare(m));
     card.appendChild(b);
@@ -675,6 +698,7 @@ function remountAllArt() {
     const s = el.dataset.seed; if (s) el.style.cssText = el.style.cssText.replace(/--a-[13bg2]+:[^;]*;?/g, '') + ';' + paletteStyle(Number(s) >>> 0);
   });
   if (shareState.memory) drawShare();
+  if (meEl && meEl.open) { $('#meart').textContent = ''; paintMe(); refreshMeCard(); }
   paintMark();
 }
 
@@ -1150,7 +1174,10 @@ function slideMarkup(s) {
   if (s.finale) {
     const a = PROFILE.archetype || {};
     const cells = finaleCells();
-    const vid = VIDEO_OK ? '<button class="btn btn--solid js-wvideo" type="button">Save video</button>' : '';
+    // The finale IS the archetype, so the primary verb here is the archetype's.
+    // "Share card" used to sit in this slot and open the generic sheet; it now
+    // hands off to the screen that owns the artifact.
+    const vid = VIDEO_OK ? '<button class="btn js-wvideo" type="button">Save video</button>' : '';
     return `<div class="wslide__in wslide__in--finale">
       <div class="eyebrow">what that makes you</div>
       <h2 class="wslide__name">${esc(a.name || 'Your year with it')}</h2>
@@ -1158,8 +1185,8 @@ function slideMarkup(s) {
       ${a.blurb ? `<p class="wslide__text">${esc(a.blurb)}</p>` : ''}
       <div class="wslide__grid">${cells.map(([b, l]) => `<div class="wslide__cell"><b>${esc(b)}</b><span>${esc(l)}</span></div>`).join('')}</div>
       <div class="wslide__cta">
+        <button class="btn btn--solid js-wme" type="button">Save archetype</button>
         ${vid}
-        <button class="btn${vid ? '' : ' btn--solid'} js-wshare" type="button">Share card</button>
         <button class="btn js-wreplay" type="button">Replay</button>
       </div>
     </div>`;
@@ -1207,7 +1234,7 @@ function buildWrapped() {
   slidesEl.addEventListener('click', (e) => {
     const t = e.target.closest('button');
     if (!t) return;
-    if (t.classList.contains('js-wshare')) { closeWrapped(); openShare(ARCHETYPE || SLIDES[1]); }
+    if (t.classList.contains('js-wme')) { closeWrapped(); openMe(null); }
     if (t.classList.contains('js-wreplay')) goSlide(0, 1);
     if (t.classList.contains('js-wvideo')) exportVideo();
   });
@@ -1310,7 +1337,14 @@ function wireWrapped() {
   $('.js-wprev').addEventListener('click', () => goSlide(wi - 1, -1));
   $('.js-wnext').addEventListener('click', () => goSlide(wi + 1, 1));
   wrapEl.addEventListener('cancel', (e) => { e.preventDefault(); closeWrapped(); });
-  wrapEl.addEventListener('close', () => { document.body.style.overflow = ''; clearTimeout(wTimer); });
+  // `close` is queued, not synchronous. Wrapped's finale closes the story and
+  // opens #/me in the same tick, so this handler used to land *after* openMe()
+  // had locked the body and quietly unlock it again — the album scrolled around
+  // behind the archetype screen. Only release the lock if nothing still holds it.
+  wrapEl.addEventListener('close', () => {
+    if (!meEl.open) document.body.style.overflow = '';
+    clearTimeout(wTimer);
+  });
 
   const stage = $('#wstage');
   let holdT = null, sx = 0, sy = 0;
@@ -1598,8 +1632,18 @@ const shareState = { memory: null, preset: 'wide', hideProject: false, opener: n
 const F_DISPLAY = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
 const F_SERIF = '"Iowan Old Style", Georgia, "Times New Roman", serif';
 
+/**
+ * The generic sheet, for quotes, stats and charts.
+ *
+ * It used to take the archetype as well — one composition trying to serve five
+ * card shapes and the thing people actually post. The archetype has its own
+ * screen now, so anything that still asks the sheet for it is redirected rather
+ * than given a second, worse version of the same image.
+ */
 function openShare(m) {
-  shareState.memory = m || ARCHETYPE || MEMORIES[0];
+  const mem = m || ARCHETYPE || MEMORIES[0];
+  if (mem && mem.isArchetype) { openMe(document.activeElement); return; }
+  shareState.memory = mem;
   shareState.opener = document.activeElement;
   if (!SHEET.open) { try { SHEET.showModal(); } catch (e) { SHEET.setAttribute('open', ''); } }
   drawShare();
@@ -1761,17 +1805,11 @@ async function drawShare() {
   const scrim = (cs.getPropertyValue('--scrim-color').trim() || '5 6 10').split(/\s+/).join(',');
   const paper = cs.getPropertyValue('--paper').trim() || '#06070A';
   const wideMode = shareState.preset === 'wide';
-  // The archetype is the hook — "I'm The Swarm Lord, what are you?" is the
-  // sentence that makes a second person run the command. When it is the subject
-  // of the card it gets the whole frame: full-bleed art, one vertical scrim, and
-  // a name set as large as the box allows.
-  const heroMode = !!m.isArchetype;
 
   ctx.fillStyle = pal.bg || paper;
   ctx.fillRect(0, 0, W, H);
 
-  const kind = m.isArchetype ? 'profile' : m.kind;
-  const img = await artImage(m.seed >>> 0, kind, wideMode ? 900 : 1080, wideMode ? 675 : 1350);
+  const img = await artImage(m.seed >>> 0, m.kind, wideMode ? 900 : 1080, wideMode ? 675 : 1350);
   if (stale()) return;
   if (img) {
     ctx.save();
@@ -1780,13 +1818,13 @@ async function drawShare() {
     let dw = W, dh = H, dx = 0, dy = 0;
     if (ar > tar) { dh = H; dw = H * ar; dx = (W - dw) / 2; }
     else { dw = W; dh = W / ar; dy = (H - dh) / 2; }
-    if (wideMode && !heroMode) { dw = W * 0.62; dh = dw / ar; dx = W - dw; dy = (H - dh) / 2; }
+    if (wideMode) { dw = W * 0.62; dh = dw / ar; dx = W - dw; dy = (H - dh) / 2; }
     ctx.drawImage(img, dx, dy, dw, dh);
     ctx.restore();
   }
 
   // scrim
-  const sideScrim = wideMode && !heroMode;
+  const sideScrim = wideMode;
   const g = sideScrim ? ctx.createLinearGradient(0, 0, W, 0) : ctx.createLinearGradient(0, 0, 0, H);
   if (sideScrim) {
     g.addColorStop(0, `rgba(${scrim},0.97)`);
@@ -1805,7 +1843,7 @@ async function drawShare() {
 
   const S = W / (wideMode ? 1200 : 1080);          // one scale factor for the lockup
   const PAD = (wideMode ? 76 : 88) * S;
-  const colW = (wideMode && !heroMode ? W * 0.58 : W) - PAD * 2;
+  const colW = (wideMode ? W * 0.58 : W) - PAD * 2;
   const copy = shareCopy(m);
 
   // mark + wordmark
@@ -1832,12 +1870,6 @@ async function drawShare() {
   ctx.fillText(rightTxt, PAD + colW - ctx.measureText(rightTxt).width, y + 34 * S);
 
   y -= 44 * S;
-
-  if (heroMode) {
-    drawArchetypeLockup(ctx, { W, H, S, PAD, colW, y, ink0, ink2, pal, wideMode });
-    grainOver(ctx, W, H, m.seed >>> 0);
-    return;
-  }
 
   if (copy.line) {
     ctx.fillStyle = ink0;
@@ -1916,90 +1948,6 @@ function grainOver(ctx, W, H, seed) {
   } catch (e) { /* pattern is cosmetic */ }
 }
 
-/**
- * The archetype lockup, built bottom-up from `o.y` (just above the footer rule):
- * two supporting numbers, the tagline, then the name at whatever size the
- * remaining box allows. Readable at thumbnail size is the only requirement that
- * matters here — in a feed the name is all anyone will resolve.
- */
-function drawArchetypeLockup(ctx, o) {
-  const { S, PAD, colW, ink0, ink2, wideMode } = o;
-  const a = PROFILE.archetype || {};
-  const name = a.name || 'codepend';
-  const tag = isRisky(a.tagline) ? '' : (a.tagline || '');
-  const cells = finaleCells().slice(0, 2);
-  const track = 'letterSpacing' in ctx;
-  let y = o.y;
-
-  // everything must clear the wordmark at the top
-  const ceiling = PAD + 74 * S;
-
-  if (cells.length) {
-    let cx = PAD;
-    for (const [v, l] of cells) {
-      ctx.fillStyle = ink2;
-      ctx.font = `600 ${(wideMode ? 17 : 20) * S}px ${F_DISPLAY}`;
-      if (track) ctx.letterSpacing = `${2 * S}px`;
-      ctx.fillText(String(l).toUpperCase(), cx, y);
-      if (track) ctx.letterSpacing = '0px';
-      ctx.fillStyle = ink0;
-      ctx.font = `800 ${(wideMode ? 42 : 54) * S}px ${F_DISPLAY}`;
-      ctx.fillText(String(v), cx, y - (wideMode ? 26 : 32) * S);
-      cx += colW / 2;
-    }
-    y -= (wideMode ? 86 : 104) * S;
-  }
-
-  let tagLines = [];
-  const tagSize = (wideMode ? 34 : 42) * S;
-  const tagLead = tagSize * 1.32;
-  if (tag) {
-    ctx.font = `italic 400 ${tagSize}px ${F_SERIF}`;
-    tagLines = wrapText(ctx, tag, colW, wideMode ? 2 : 3);
-  }
-
-  // Give the name whatever vertical room is left after the fixed blocks, and
-  // start from a size no name will ever fit at — so the loop grows into the
-  // frame instead of settling for the first size that happens to work. A short
-  // archetype ("The Swarm Lord") should fill the card.
-  const eyebrowH = 48 * S;
-  const room = y - tagLines.length * tagLead - (tagLines.length ? 20 * S : 0) - eyebrowH - ceiling;
-  let size = (wideMode ? 210 : 230) * S;
-  let lines = [];
-  for (;;) {
-    ctx.font = `800 ${size}px ${F_DISPLAY}`;
-    lines = wrapText(ctx, name, colW, 5);
-    const overWide = lines.some((l) => ctx.measureText(l).width > colW);
-    if ((!overWide && lines.length * size * 1.03 <= room) || size <= 30 * S) break;
-    size *= 0.93;
-  }
-
-  if (tagLines.length) {
-    ctx.fillStyle = ink0;
-    ctx.globalAlpha = 0.84;
-    ctx.font = `italic 400 ${tagSize}px ${F_SERIF}`;
-    for (let i = tagLines.length - 1; i >= 0; i--) { ctx.fillText(tagLines[i], PAD, y); y -= tagLead; }
-    ctx.globalAlpha = 1;
-    y -= 16 * S;
-  }
-
-  ctx.fillStyle = ink0;
-  ctx.font = `800 ${size}px ${F_DISPLAY}`;
-  if (track) ctx.letterSpacing = `${-size * 0.028}px`;
-  for (let i = lines.length - 1; i >= 0; i--) { ctx.fillText(lines[i], PAD, y); y -= size * 1.03; }
-  if (track) ctx.letterSpacing = '0px';
-  y -= 12 * S;
-
-  const eyebrow = 'WHAT YOU ARE';
-  ctx.fillStyle = ink0;
-  ctx.globalAlpha = 0.6;
-  ctx.font = `600 ${20 * S}px ${F_DISPLAY}`;
-  if (track) ctx.letterSpacing = `${2.8 * S}px`;
-  ctx.fillText(track ? eyebrow : spaced(eyebrow), PAD, Math.max(y, ceiling));
-  if (track) ctx.letterSpacing = '0px';
-  ctx.globalAlpha = 1;
-}
-
 /** Canvas has no letter-spacing in older engines; fake the eyebrow tracking. */
 function spaced(s) { return s.split('').join(' '); }
 
@@ -2030,7 +1978,6 @@ function wireShare() {
     drawShare();
   }));
   $('#hideproj').addEventListener('change', (e) => { shareState.hideProject = e.target.checked; drawShare(); });
-  $$('.js-share').forEach((b) => b.addEventListener('click', () => openShare(ARCHETYPE || MEMORIES[0])));
 
   $('.js-dl').addEventListener('click', () => {
     const note = $('#snote');
@@ -2064,6 +2011,281 @@ function wireShare() {
     }
   });
 }
+
+/* ── #/me — the archetype, and the one button that takes it away ───────────
+
+   The archetype is the sentence people repeat at each other ("I'm The Swarm
+   Lord, what are you?"), and it used to be card six of thirty with the same ⇪
+   every quote card carries. It has a screen now, routed at `#/me` so the URL
+   can be sent on its own, and exactly one verb: Save archetype.
+
+   Everything below draws in this page. Nothing is uploaded, and what lands on
+   the image is deliberately smaller than what is on the screen: the name, the
+   line, round numbers, the wordmark. No project names, no quotes, no paths.
+   ------------------------------------------------------------------------ */
+
+/**
+ * Project names are the one thing the archetype copy can leak on its own: The
+ * Serial Monogamist's blurb is built out of `topProject`, and redaction leaves
+ * directory names alone because they are not paths. `shareCopy` already does
+ * this substitution for ordinary memories; the archetype needs its own list
+ * because it carries no `project` field to substitute against.
+ */
+const PROJECT_NAMES = (() => {
+  const seen = new Set();
+  const add = (p) => { const s = String(p == null ? '' : p).trim(); if (s.length > 2) seen.add(s); };
+  add(PROFILE.topProject);
+  for (const m of MEMORIES) { add(m.project); if (m.quote) add(m.quote.project); }
+  return Array.from(seen).sort((a, b) => b.length - a.length);
+})();
+
+function deproject(t) {
+  let s = String(t == null ? '' : t);
+  for (const p of PROJECT_NAMES) if (s.indexOf(p) >= 0) s = s.split(p).join('one project');
+  return s;
+}
+
+/**
+ * The share-safe archetype. `--redact paranoid` has already emptied the risky
+ * inputs upstream; this is the last filter, and it must still leave a card
+ * worth posting — the name alone is the point, the rest is supporting cast.
+ */
+function archetypeCopy() {
+  const a = PROFILE.archetype || {};
+  const safe = (t) => { const s = deproject(t); return isRisky(s) ? '' : s; };
+  return {
+    name: a.name || 'codepend',
+    tagline: safe(a.tagline),
+    blurb: safe(a.blurb),
+    seed: (typeof a.seed === 'number' ? a.seed : hash32('archetype')) >>> 0,
+    stats: finaleCells().map(([value, label]) => {
+      // Tuple and record at once. archetype-card.js is being written to a
+      // contract that names `stats` but not its shape, and a cell that answers
+      // to both `[v, l]` and `{value, label}` costs nothing and cannot be the
+      // reason the card comes out blank.
+      const cell = [String(value), String(label)];
+      cell.value = String(value);
+      cell.label = String(label);
+      return cell;
+    }),
+  };
+}
+
+/* The dedicated card renderer, when render.js has inlined it. Same bridge
+   video.js gets: one global, one factory-shaped object, no imports — app.js is
+   inlined as a single module script and a static import would have nothing to
+   resolve against from file://. If it is absent, the local fallback below draws
+   the card and the button behaves identically. */
+const CARD_API = globalThis.CODEPEND_ARCHETYPE_CARD || null;
+const ME_PRESETS = (CARD_API && CARD_API.ARCHETYPE_PRESETS)
+  || { square: [1080, 1080], story: [1080, 1920], wide: [1200, 675] };
+const ME_ORDER = ['square', 'story', 'wide'];
+
+const meEl = $('#me');
+const meState = { preset: 'square', url: null, blob: null, opener: null, seq: 0, busy: false };
+
+/**
+ * Draw one archetype card and hand back a PNG blob.
+ * @param {'square'|'story'|'wide'} preset
+ * @returns {Promise<Blob|null>}
+ */
+async function renderArchetypePNG(preset) {
+  const dims = ME_PRESETS[preset] || ME_PRESETS.square;
+  const W = dims[0], H = dims[1];
+  const cv = document.createElement('canvas');
+  cv.width = W; cv.height = H;
+  const ctx = cv.getContext('2d');
+  if (!ctx) return null;
+  const c = archetypeCopy();
+  const spec = {
+    name: c.name, tagline: c.tagline, blurb: c.blurb, stats: c.stats,
+    seed: c.seed, preset, theme: themeNow(),
+  };
+  const deps = {
+    artImage,
+    palette: paletteOf,
+    grainPattern,
+    markImage,                     // the ember, for the card's own wordmark
+    fonts: { display: F_DISPLAY, serif: F_SERIF },
+  };
+  // One composition, or none. There used to be a built-in fallback here, and it
+  // was the more dangerous of the two failure modes: the module went missing
+  // from the bundle once already, and the page quietly drew a different,
+  // unaudited picture with no error and no visual tell. A card that does not
+  // appear is a bug someone reports; a card that appears and was never reviewed
+  // is a bug that ships on somebody's timeline.
+  if (!CARD_API || typeof CARD_API.drawArchetypeCard !== 'function') {
+    throw new Error('archetype-card.js is missing from this build');
+  }
+  await CARD_API.drawArchetypeCard(ctx, spec, deps);
+  return new Promise((res) => {
+    try { cv.toBlob((b) => res(b || null), 'image/png'); } catch (e) { res(null); }
+  });
+}
+
+
+function archetypeFilename() {
+  const slug = String((PROFILE.archetype && PROFILE.archetype.name) || 'archetype')
+    .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'archetype';
+  return `codepend-${slug}-${meState.preset}.png`;
+}
+
+/** Drop the previous blob before a new one replaces it. */
+function releaseMe() {
+  if (meState.url) { try { URL.revokeObjectURL(meState.url); } catch (e) { /* already gone */ } }
+  meState.url = null;
+  meState.blob = null;
+}
+
+/**
+ * Draw the card and attach it to the button.
+ *
+ * The download is a real `<a download>` with the file already on it, clicked by
+ * the person. Nothing here calls `a.click()` and reports success — that is what
+ * the video export shipped once, and on Safari the click lands after the user
+ * gesture has expired, so the UI said "Saved" while nothing had been.
+ */
+async function refreshMeCard() {
+  const mine = ++meState.seq;
+  const a = $('#mesave');
+  const label = $('#mesavet');
+  const note = $('#menote');
+  const prev = $('#meprev');
+  meState.busy = true;
+  a.removeAttribute('href');
+  a.setAttribute('aria-disabled', 'true');
+  if (label) label.textContent = 'Drawing your card…';
+  note.textContent = 'Drawing your card in this page. Nothing is uploaded.';
+
+  let blob = null;
+  try { blob = await renderArchetypePNG(meState.preset); }
+  catch (e) { console.warn('archetype card failed', e); blob = null; }
+  if (mine !== meState.seq) return null;               // a preset switch overtook us
+  meState.busy = false;
+
+  if (!blob) {
+    if (label) label.textContent = 'Save archetype';
+    note.textContent = 'This browser would not draw the image. Wrapped and the video export still work.';
+    return null;
+  }
+
+  releaseMe();
+  meState.blob = blob;
+  meState.url = URL.createObjectURL(blob);
+  a.href = meState.url;
+  a.download = archetypeFilename();
+  a.removeAttribute('aria-disabled');
+  if (label) label.textContent = 'Save archetype';
+  if (prev) { prev.src = meState.url; prev.hidden = false; }
+  const dims = ME_PRESETS[meState.preset] || ME_PRESETS.square;
+  const kb = blob.size < 1048576
+    ? `${Math.round(blob.size / 1024)} KB`
+    : `${(blob.size / 1048576).toFixed(1)} MB`;
+  note.textContent = `${dims[0]} × ${dims[1]} PNG, ${kb}. Drawn here, never uploaded — the image carries the name, the line, the numbers and the wordmark, nothing else.`;
+  globalThis.CODEPEND_LAST_ARCHETYPE = {
+    size: blob.size, type: blob.type, preset: meState.preset,
+    width: dims[0], height: dims[1], filename: a.download,
+  };
+  return blob;
+}
+
+function paintMe() {
+  const c = archetypeCopy();
+  meEl.setAttribute('style', paletteStyle(c.seed));
+  $('#mename').textContent = c.name;
+  const tg = $('#metag');
+  tg.textContent = c.tagline; tg.hidden = !c.tagline;
+  const bl = $('#meblurb');
+  bl.textContent = c.blurb; bl.hidden = !c.blurb;
+  $('#mestats').innerHTML = c.stats
+    .map((s) => `<div class="me__cell"><b>${esc(s.value)}</b><span>${esc(s.label)}</span></div>`).join('');
+  const art = $('#meart');
+  if (!art.firstChild) {
+    art.innerHTML = labelled(artSVG(c.seed, 'profile', { w: 1000, h: 1600, blur: true }), c.seed, 'profile');
+  }
+}
+
+/** @param {Element|null} from the control to hand focus back to on close */
+function openMe(from) {
+  if (!ARCHETYPE) return;
+  // boot() runs route() three times (once now, twice more after the DOM has
+  // settled, for deep links into the feed). Re-opening would throw away a card
+  // already drawn and reset the format back to square under the user.
+  if (meEl.open) return;
+  meState.opener = from || document.activeElement;
+  if (wrapEl.open) closeWrapped();
+  if (SHEET.open) closeShare();
+  paintMe();
+  if (!meEl.open) { try { meEl.showModal(); } catch (e) { meEl.setAttribute('open', ''); } }
+  document.body.style.overflow = 'hidden';
+  if (location.hash !== '#/me') history.replaceState(null, '', '#/me');
+  // Draw immediately, so the button has the file on it before anyone reaches
+  // for it. One click, their own gesture, no second step.
+  refreshMeCard();
+}
+
+function closeMe() {
+  if (meEl.open) meEl.close();
+  document.body.style.overflow = '';
+  if (location.hash === '#/me') history.replaceState(null, '', location.pathname + location.search);
+  if (meState.opener && meState.opener.focus) meState.opener.focus();
+}
+
+async function copyArchetype() {
+  const note = $('#menote');
+  try {
+    // The blob is kept rather than re-read off its own object URL. Reading a
+    // `blob:` address back is still a request, and this page makes none.
+    if (!meState.blob) throw new Error('not ready');
+    if (!navigator.clipboard || !window.ClipboardItem) throw new Error('unsupported');
+    await navigator.clipboard.write([new ClipboardItem({ 'image/png': meState.blob })]);
+    note.textContent = 'Copied. Paste it anywhere.';
+  } catch (e) {
+    note.textContent = 'Copying images is not available here — use Save archetype, or long-press the preview.';
+  }
+}
+
+function wireMe() {
+  $$('.js-me').forEach((b) => b.addEventListener('click', () => openMe(b)));
+  if (!ARCHETYPE) {
+    $$('.js-me').forEach((b) => { b.hidden = true; });
+    return;
+  }
+  $$('.js-meclose', meEl).forEach((b) => b.addEventListener('click', closeMe));
+  meEl.addEventListener('cancel', (e) => { e.preventDefault(); closeMe(); });
+  meEl.addEventListener('close', () => { if (!wrapEl.open) document.body.style.overflow = ''; });
+  $('.js-mewrapped', meEl).addEventListener('click', () => { closeMe(); openWrapped(null); });
+  $$('.seg', meEl).forEach((b) => b.addEventListener('click', () => {
+    const p = b.dataset.mepreset;
+    if (!p || !ME_PRESETS[p]) return;
+    $$('.seg', meEl).forEach((x) => x.classList.toggle('is-on', x === b));
+    meState.preset = p;
+    refreshMeCard();
+  }));
+  $('#mesave').addEventListener('click', (e) => {
+    const a = $('#mesave');
+    if (!a.getAttribute('href')) {
+      e.preventDefault();
+      $('#menote').textContent = 'Still drawing — one moment.';
+      if (!meState.busy) refreshMeCard();
+      return;
+    }
+    // The browser is doing the saving from here; say so only after it was asked.
+    setTimeout(() => { $('#menote').textContent = 'Asked your browser to save it. Post it as it is.'; }, 400);
+  });
+  $('.js-mecopy', meEl).addEventListener('click', copyArchetype);
+}
+
+/* Drivable from a console or a test harness without clicking through the page.
+   Read-only status; nothing here uploads. */
+globalThis.codependArchetype = {
+  presets: () => Object.assign({}, ME_PRESETS),
+  order: () => ME_ORDER.slice(),
+  copy: () => archetypeCopy(),
+  render: (preset) => renderArchetypePNG(preset || 'square'),
+  open: () => openMe(null),
+  get last() { return globalThis.CODEPEND_LAST_ARCHETYPE || null; },
+};
 
 /* ── theme, dock, routing, boot ───────────────────────────────────────── */
 
@@ -2124,6 +2346,11 @@ function wireChrome() {
 
 function route() {
   const hh = location.hash;
+  // `#/me` is a real address — it is the URL somebody sends when they host this
+  // page, so it has to survive a cold load, the back button and a link from
+  // inside the feed. Anything else closes the screen again.
+  if (hh === '#/me') { openMe(null); return; }
+  if (meEl && meEl.open) closeMe();
   if (hh === '#/wrapped') { openWrapped(null); return; }
   const m = /^#\/m\/(.+)$/.exec(hh);
   if (m) {
@@ -2145,6 +2372,7 @@ function boot() {
   wireChrome();
   wireWrapped();
   wireShare();
+  wireMe();
   addEventListener('hashchange', route);
   route();
   // Deep links to a card need the DOM settled first.
@@ -2165,7 +2393,7 @@ try {
        </div>`);
     feedEl.appendChild(blank);
     $('#filters').hidden = true;
-    $$('.js-wrapped').forEach((b) => { b.hidden = true; });
+    $$('.js-wrapped, .js-me').forEach((b) => { b.hidden = true; });
     paintMark();
     wireChrome();
   } else {

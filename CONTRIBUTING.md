@@ -56,7 +56,9 @@ src/detectors/*     one file per family of cards
 src/art.js          deterministic seeded SVG cover art (runs in Node AND the browser)
 src/render.js       inlines everything               -> one self-contained .html
 src/redact.js       the secret scrubber
-src/app/            the page: app.css, app.js
+src/app/            the page: app.css, app.js, video.js, archetype-card.js
+                    (the last two are inlined by render.js behind a global —
+                     add a module here and it must be added there too)
 docs/               the specs. They are the source of truth for behaviour and copy.
 ```
 
