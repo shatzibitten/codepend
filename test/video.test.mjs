@@ -275,9 +275,18 @@ test('inlining video.js adds no external reference to the page', () => {
   assert.ok(!/<script[^>]+\bsrc=/i.test(html), 'no external <script src>');
   assert.ok(!/<link[^>]+rel=["']?stylesheet/i.test(html), 'no external stylesheet');
   assert.ok(!/@import\s+url\(/i.test(html), 'no CSS @import');
-  // data: URIs are fine (favicon, art); http(s) URIs are not.
+  // What matters is that the page never FETCHES anything, not that the string
+  // "https" is absent. An og:image is a URL a scraper resolves on its own
+  // server; the page itself still loads nothing. So assert on the elements that
+  // actually cause a request.
+  assert.ok(!/<(?:img|iframe|video|audio|source|embed)[^>]+\bsrc=["']?https?:/i.test(html),
+    'no element loads a remote resource');
+  assert.ok(!/<link[^>]+\bhref=["']?https?:/i.test(html), 'no remote <link>');
+  assert.ok(!/\bfetch\(|XMLHttpRequest|new WebSocket|EventSource/.test(html),
+    'nothing requests anything at runtime');
+  // Absolute URLs that remain must be metadata or documentation, never loads.
   const urls = html.match(/https?:\/\/[^\s"'<>)]+/gi) || [];
-  const bad = urls.filter((u) => !/^https?:\/\/www\.w3\.org\//i.test(u));
+  const bad = urls.filter((u) => !/^https?:\/\/(www\.w3\.org|shatzibitten\.github\.io|github\.com\/shatzibitten)/i.test(u));
   assert.deepEqual(bad, [], `unexpected absolute URLs: ${bad.slice(0, 3).join(', ')}`);
 });
 
@@ -306,4 +315,38 @@ test('video.js ships in the npm package (it is under src/)', () => {
     'src/ must be published or the page loses the video export');
   assert.ok(fs.existsSync(path.join(ROOT, 'src', 'app', 'video.js')));
   assert.deepEqual(pkg.dependencies, {}, 'the video export added no dependency');
+});
+
+/* ── 10. link previews ─────────────────────────────────────────────────── */
+
+test('a hosted page unfurls: title, description, image, card type', () => {
+  const html = renderHTML(payload, { version: '0.1.0' });
+  for (const tag of ['og:title', 'og:description', 'og:image', 'twitter:card']) {
+    assert.ok(html.includes(`"${tag}"`), `missing ${tag}`);
+  }
+  assert.ok(/twitter:card"\s+content="summary_large_image"/.test(html),
+    'a big card, since there is an image');
+});
+
+test('the preview never carries a project name, a quote or a path', () => {
+  // The description is rendered by somebody else's server and cached there, so
+  // it is the one part of this page that genuinely leaves the machine.
+  const html = renderHTML(payload, { version: '0.1.0' });
+  const head = html.slice(0, html.indexOf('</head>'));
+  const desc = (head.match(/property="og:description" content="([^"]*)"/) || [])[1] || '';
+  assert.ok(desc.length > 0, 'there is a description');
+  assert.ok(!/[«»"']/.test(desc), 'no quoted prompt');
+  assert.ok(!/[/\\]/.test(desc), 'no path');
+  for (const p of (payload.memories || []).map((m) => m.project).filter(Boolean)) {
+    assert.ok(!desc.includes(p), `project name "${p}" reached the preview`);
+  }
+});
+
+test('paranoid drops the numbers from the preview, and --no-og drops it all', () => {
+  const par = renderHTML(payload, { version: '0.1.0', redact: 'paranoid' });
+  const desc = (par.match(/property="og:description" content="([^"]*)"/) || [])[1] || '';
+  assert.ok(!/\d/.test(desc), `paranoid leaked a number: ${desc}`);
+
+  const off = renderHTML(payload, { version: '0.1.0', og: false });
+  assert.ok(!off.includes('og:'), 'no preview tags at all');
 });

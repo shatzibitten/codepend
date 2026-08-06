@@ -37,6 +37,9 @@ codepend — your agent history, as a photo album
         --json-only        only write --json, skip the HTML
         --no-cache         ignore the scan cache, re-read every file
         --no-cursor        skip Cursor (its history lives in a large SQLite db)
+        --og-url <url>     where you'll host the page, for the link preview
+        --og-image <url>   preview image, if you'd rather not use the default
+        --no-og            leave the link-preview tags out entirely
     -q, --quiet            errors only
     -v, --version          print the version
     -h, --help             this
@@ -68,6 +71,9 @@ const SPEC = {
   open: { type: 'boolean' },
   cache: { type: 'boolean' },
   cursor: { type: 'boolean' },
+  og: { type: 'boolean' },
+  'og-image': { type: 'string' },
+  'og-url': { type: 'string' },
   'json-only': { type: 'boolean' },
   quiet: { type: 'boolean', alias: 'q' },
   help: { type: 'boolean', alias: 'h' },
@@ -636,6 +642,9 @@ async function run(argv, env = process.env) {
     const html = renderHTML(payload, {
       redact: cfg.redact,
       version: PKG.version,
+      og: cfg.og,
+      ogImage: cfg.ogImage,
+      ogUrl: cfg.ogUrl,
       // Same corpus + same `now` => byte-identical file. Keep it that way.
       generatedAt: cfg.now,
     });

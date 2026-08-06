@@ -107,6 +107,93 @@ function faviconURI(payload) {
   return `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 33 33'%3E%3Crect width='33' height='33' rx='7' fill='%2306070A'/%3E${dots}%3C/svg%3E`;
 }
 
+/** Where the fallback preview card lives. Overridable with `--og-image`. */
+const DEFAULT_OG_IMAGE = 'https://shatzibitten.github.io/codepend/og.png';
+
+/**
+ * Open Graph tags, for the case where somebody hosts their own page.
+ *
+ * Opened from `file://` these do nothing, which is the normal case. But people
+ * put this on Pages or their own box, and an unfurled link with no title and no
+ * image looks like a broken upload rather than a year of someone's work.
+ *
+ * What goes in, and what deliberately does not:
+ *   - the archetype and the round numbers — the hook, and identifying of
+ *     nobody;
+ *   - the agents by name, because "who was in the room" is the joke;
+ *   - NOT project names, NOT quotes, NOT paths. A link preview is rendered by
+ *     someone else's server and cached by it, so anything here has left the
+ *     machine in a way the page itself never does. Under `paranoid` even the
+ *     numbers go.
+ *
+ * `og:image` has to be an absolute URL — scrapers reject `data:` — so it points
+ * at the project's own hosted card. That is a URL in a meta tag, not a request
+ * this page makes: the page still loads nothing over the network.
+ *
+ * @param {object} payload
+ * @param {{og?:boolean, ogImage?:string, ogUrl?:string, redact?:string}} o
+ * @param {string} title
+ * @returns {string}
+ */
+export function ogTags(payload, o, title) {
+  if (o.og === false) return '';
+  const p = payload.profile || {};
+  const a = p.archetype || {};
+  const s = payload.stats || {};
+  const paranoid = o.redact === 'paranoid';
+
+  const heading = a.name || 'codepend';
+  const bits = [];
+  if (!paranoid) {
+    if (p.activeDays) bits.push(`${groupNum(p.activeDays)} days`);
+    const msgs = s.humanTurns != null ? s.humanTurns : null;
+    if (msgs) bits.push(`${groupNum(msgs)} messages`);
+    const agents = agentNames(payload);
+    if (agents) bits.push(`with ${agents}`);
+  }
+  const summary = bits.length
+    ? `${bits.join(', ')}. Read out of my own agent logs, on my own machine.`
+    : 'An album of one working year, read out of local agent logs.';
+  const description = `${a.tagline ? a.tagline + ' ' : ''}${summary} Run npx codepend on yours.`;
+
+  const image = o.ogImage || DEFAULT_OG_IMAGE;
+  const tags = [
+    ['og:type', 'website'],
+    ['og:site_name', 'codepend'],
+    ['og:title', heading],
+    ['og:description', description],
+  ];
+  if (o.ogUrl) tags.push(['og:url', o.ogUrl]);
+  if (image) {
+    tags.push(['og:image', image], ['og:image:width', '1200'], ['og:image:height', '630'],
+      ['og:image:alt', 'codepend — your AI coding history, as a photo album']);
+  }
+  const names = [
+    ['twitter:card', image ? 'summary_large_image' : 'summary'],
+    ['twitter:title', heading],
+    ['twitter:description', description],
+  ];
+  if (image) names.push(['twitter:image', image]);
+
+  return tags.map(([k, v]) => `<meta property="${k}" content="${esc(v)}">`)
+    .concat(names.map(([k, v]) => `<meta name="${k}" content="${esc(v)}">`))
+    .join('\n') + `\n<!-- title: ${esc(title)} -->`;
+}
+
+/** "Cursor, Codex and Claude Code" — only the ones actually in the history. */
+function agentNames(payload) {
+  const LABEL = { claude: 'Claude Code', codex: 'Codex', cursor: 'Cursor' };
+  const totals = Object.create(null);
+  for (const d of (Array.isArray(payload.timeline) ? payload.timeline : [])) {
+    for (const [k, v] of Object.entries(d.agent || {})) totals[k] = (totals[k] || 0) + (v || 0);
+  }
+  const present = Object.keys(totals).filter((k) => totals[k] > 0 && LABEL[k])
+    .sort((x, y) => totals[y] - totals[x]).map((k) => LABEL[k]);
+  if (!present.length) return '';
+  if (present.length === 1) return present[0];
+  return `${present.slice(0, -1).join(', ')} and ${present[present.length - 1]}`;
+}
+
 const BOOT = `(function(){try{var t=localStorage.getItem('codepend.theme');
 if(t!=='light'&&t!=='dark'){t=window.matchMedia&&window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';}
 document.documentElement.dataset.theme=t;}catch(e){document.documentElement.dataset.theme='dark';}})();`;
@@ -136,6 +223,7 @@ export function renderHTML(payload, opts) {
   const title = o.title || (arche.name ? `${arche.name} — codepend` : 'codepend');
   const desc = arche.tagline
     || 'Your agent history, as a photo album. Computed locally, never uploaded.';
+  const og = ogTags(payload, o, title);
 
   const data = Object.assign({}, payload, {
     meta: Object.assign({
@@ -184,6 +272,7 @@ export function renderHTML(payload, opts) {
   return tpl
     .replace('__TITLE__', esc(title))
     .replace('__DESC__', esc(desc))
+    .replace('__OG__', () => og)
     .replace('__FAVICON__', faviconURI(payload))
     .replace('__BOOT__', () => BOOT)
     .replace('__CSS__', () => css)

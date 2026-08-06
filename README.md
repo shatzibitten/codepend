@@ -118,6 +118,9 @@ Adding an agent is one file that turns its logs into `Session` objects. Every de
     --json-only        only write --json, skip the HTML
     --no-cache         ignore the scan cache, re-read every file
     --no-cursor        skip Cursor (its history lives in a large SQLite db)
+    --og-url <url>     where you'll host the page, for the link preview
+    --og-image <url>   preview image, if you'd rather not use the default
+    --no-og            leave the link-preview tags out entirely
 -q, --quiet            errors only
 -v, --version          print the version
 -h, --help             this
@@ -133,6 +136,7 @@ npx codepend --since 90d --wrapped          # the last quarter, as a story
 npx codepend --redact paranoid --out ~/share.html
 npx codepend --serve                        # WSL, SSH, headless, any box with no browser
 npx codepend --json data.json --json-only   # just the numbers, for your own charts
+npx codepend --og-url https://you.dev/year   # hosting it? the link will unfurl properly
 ```
 
 Rescans are cached in `~/.cache/codepend/`, so the second run is instant.

@@ -206,6 +206,11 @@ export function resolveConfig(flags = {}, ctx = {}) {
     out: flags.out ? path.resolve(flags.out) : paths.out,
     json: flags.json ? path.resolve(flags.json) : null,
     jsonOnly: !!flags.jsonOnly,
+    // Link-preview tags. On by default: they do nothing from file:// and they
+    // are the difference between a hosted page unfurling and looking broken.
+    og: flags.og !== false,
+    ogImage: flags.ogImage || undefined,
+    ogUrl: flags.ogUrl || undefined,
     wrapped: !!flags.wrapped,
 
     // Behaviour.

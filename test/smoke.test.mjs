@@ -235,7 +235,7 @@ test('smoke: synthetic corpus → CLI → one self-contained, non-leaking HTML f
     // ---- self-contained: nothing is fetched at open time -----------------
     assert.ok(!/<script[^>]+\bsrc=/i.test(html), 'no external <script src>');
     assert.ok(!/<link[^>]+rel=["']?stylesheet/i.test(html), 'no external stylesheet');
-    assert.ok(!/https?:\/\/(?!www\.w3\.org|github\.com\/shatzibitten)/i.test(html),
+    assert.ok(!/https?:\/\/(?!www\.w3\.org|github\.com\/shatzibitten|shatzibitten\.github\.io)/i.test(html),
       'no unexpected absolute URLs');
 
     // ---- the privacy promise, enforced ----------------------------------
