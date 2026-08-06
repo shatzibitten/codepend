@@ -149,4 +149,10 @@ Three ways in, easiest first:
 
 Full guide in [`CONTRIBUTING.md`](CONTRIBUTING.md). `node --test`, 367 of them, no dependencies to install.
 
+---
+
+## Acknowledgements
+
+This project began with an idea from [Lance Hankins](https://www.linkedin.com/in/lhankins/). Thank you, Lance, for the spark that started it all.
+
 MIT.
