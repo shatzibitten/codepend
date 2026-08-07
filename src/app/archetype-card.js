@@ -64,9 +64,25 @@ export const ARCHETYPE_PRESETS = {
 
 export const DEFAULT_PRESET = 'square';
 
-/** Fixed copy. The eyebrow labels the name; the CTA is the whole funnel. */
-export const EYEBROW = 'WHAT YOU ARE';
+/**
+ * Fixed copy. The eyebrow labels the name; the CTA is the whole funnel.
+ *
+ * The eyebrow used to read "WHAT YOU ARE", which frames the name nicely for
+ * someone who already knows what they are looking at — and says nothing at all
+ * to the person this card exists for. Seen cold in a feed, "The Everyday
+ * Companion / 214 days / 718 sessions / 5 805 messages" could be therapy, a
+ * gym, a language app. Spotify Wrapped can open on a name because the brand
+ * carries the category; `codepend` carries nothing yet, so the card has to say
+ * what it is about.
+ */
+export const EYEBROW = 'WHAT YOUR AI CODING LOGS SAY YOU ARE';
 export const WORDMARK = 'codepend';
+/**
+ * Sits after the wordmark when the frame is wide enough to hold it. A bare
+ * `codepend` is a word nobody has heard yet; this is the one line that turns it
+ * into a thing somebody might go and get.
+ */
+export const WORDMARK_SUB = 'your AI coding history, as a photo album';
 export const CTA = 'npx codepend';
 
 /** WCAG AA for large text is 3:1. We hold the card to body-text AA anyway. */
@@ -614,6 +630,19 @@ export function archetypeLayout(spec, preset) {
   };
   footer.wordmark.w = measure(WORDMARK, { size: footSize, weight: 700 });
   const ctaW = measure(CTA, { size: footSize, weight: 600, tracking: 0.02 });
+
+  // The descriptor is the first thing dropped when the row gets tight: the
+  // wordmark and the command have to survive at every size, the explanation is
+  // a bonus the wide frames can afford.
+  const subSize = footSize * 0.92;
+  const subW = measure(WORDMARK_SUB, { size: subSize, weight: 400 });
+  const subX = footer.wordmark.x + footer.wordmark.w + sc(10);
+  footer.sub = (subX + subW <= footer.x + footer.w - ctaW - sc(24))
+    ? {
+      x: subX, y: footer.y, w: subW, h: footerH, size: subSize, weight: 400,
+      text: WORDMARK_SUB, baseline: footer.wordmark.baseline,
+    }
+    : null;
   footer.cta = {
     x: footer.x + footer.w - ctaW, y: footer.y, w: ctaW, h: footerH,
     size: footSize, weight: 600, tracking: 0.02, text: CTA,
@@ -693,10 +722,19 @@ export function archetypeLayout(spec, preset) {
   };
   y = nameBlock.y - sc(C.eyebrow.gapAbove);
 
-  const eyeW = eyebrow ? measure(eyebrow, { size: eyeSize, weight: 600, tracking: C.eyebrow.tracking }) : 0;
+  // Shrink to fit rather than clip. The eyebrow now carries the subject of the
+  // whole card, so losing its tail to the frame edge would cost more than a
+  // couple of points of size — and on the wide preset the column is narrow.
+  let eyeFitted = eyeSize;
+  let eyeW = eyebrow ? measure(eyebrow, { size: eyeFitted, weight: 600, tracking: C.eyebrow.tracking }) : 0;
+  const eyeFloor = eyeSize * 0.72;
+  while (eyebrow && eyeW > colW && eyeFitted > eyeFloor) {
+    eyeFitted -= 0.5;
+    eyeW = measure(eyebrow, { size: eyeFitted, weight: 600, tracking: C.eyebrow.tracking });
+  }
   const eyeBlock = {
     x: colX, y: y - eyeH, w: Math.min(colW, eyeW), h: eyebrow ? eyeH : 0,
-    lines: eyebrow ? [eyebrow] : [], size: eyeSize, lineHeight: eyeH,
+    lines: eyebrow ? [eyebrow] : [], size: eyeFitted, lineHeight: eyeH,
     weight: 600, face: 'display', tracking: C.eyebrow.tracking,
   };
 
@@ -997,6 +1035,10 @@ export async function drawArchetypeCard(ctx, spec, deps) {
   setFont(ctx, fonts, { size: L.footer.wordmark.size, weight: 700 });
   ctx.fillText(WORDMARK, L.footer.wordmark.x, L.footer.wordmark.baseline);
   ctx.fillStyle = L.ink.quiet;
+  if (L.footer.sub) {
+    setFont(ctx, fonts, { size: L.footer.sub.size, weight: 400 });
+    ctx.fillText(WORDMARK_SUB, L.footer.sub.x, L.footer.sub.baseline);
+  }
   setFont(ctx, fonts, { size: L.footer.cta.size, weight: 600 });
   drawTracked(ctx, CTA, L.footer.cta.x, L.footer.cta.baseline, L.footer.cta.tracking * L.footer.cta.size);
 

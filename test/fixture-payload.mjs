@@ -54,7 +54,7 @@ export const memories = [
     date: at(180, 23, 41), weight: 98,
     eyebrow: 'SIX MONTHS AGO', title: 'You were deep in orchard.',
     body: '61 messages, 4h 12m. You ended at 03:47. This is what you were saying:',
-    quote: { text: 'давай ещё раз, но без анимации', who: 'you', ts: at(180, 3, 47), project: 'orchard' },
+    quote: { text: 'let’s do it again, but without the animation', who: 'you', ts: at(180, 3, 47), project: 'orchard' },
     agent: 'codex', project: 'orchard', tags: ['anniversary'],
   }),
   M({
@@ -100,7 +100,7 @@ export const memories = [
     date: null, weight: 82,
     eyebrow: 'YOUR CATCHPHRASE', title: 'You have said this 141 times.',
     body: 'Two words. No punctuation. It has never once asked you to be more specific.',
-    quote: { text: 'коммит и пуш', who: 'you', ts: at(3, 22, 4), project: 'orchard' },
+    quote: { text: 'commit and push', who: 'you', ts: at(3, 22, 4), project: 'orchard' },
     agent: 'codex', project: 'orchard', tags: ['funny'],
   }),
   M({
@@ -217,7 +217,7 @@ export const memories = [
     date: at(55, 1, 38), weight: 62,
     eyebrow: 'THAT ONE NIGHT', title: 'June 11, 01:38.',
     body: 'Nine interruptions in eleven minutes, and then this, and then nothing until Friday.',
-    quote: { text: 'стоп. стоп. всё не так, откати обратно', who: 'you', ts: at(55, 1, 38), project: 'beacon' },
+    quote: { text: 'stop. stop. this is all wrong, roll it back.', who: 'you', ts: at(55, 1, 38), project: 'beacon' },
     agent: 'codex', project: 'beacon', tags: ['funny'],
   }),
   M({
