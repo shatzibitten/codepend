@@ -1,6 +1,6 @@
 {
   "name": "codepend",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Stats, On This Day memories and a Wrapped-style year in review for Claude Code, Codex and Cursor. Reads your local agent history and builds one self-contained HTML page. Runs locally, uploads nothing, zero dependencies.",
   "type": "module",
   "bin": {
