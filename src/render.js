@@ -276,6 +276,9 @@ export function renderHTML(payload, opts) {
     "  archetypeFilename:   typeof archetypeFilename   !== 'undefined' ? archetypeFilename   : null,",
     "  safeText:            typeof safeText            !== 'undefined' ? safeText            : null,",
     "  ARCHETYPE_PRESETS:   typeof ARCHETYPE_PRESETS   !== 'undefined' ? ARCHETYPE_PRESETS   : null,",
+    // The screen is a preview of the image and has to say the same words.
+    "  EYEBROW:             typeof EYEBROW             !== 'undefined' ? EYEBROW             : null,",
+    "  WORDMARK_SUB:        typeof WORDMARK_SUB        !== 'undefined' ? WORDMARK_SUB        : null,",
     '};',
     '})();',
     '',

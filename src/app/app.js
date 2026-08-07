@@ -2192,6 +2192,16 @@ async function refreshMeCard() {
 function paintMe() {
   const c = archetypeCopy();
   meEl.setAttribute('style', paletteStyle(c.seed));
+  // One source of truth for the framing copy. The screen is a preview of the
+  // image, so it cannot say something different from the image — it did, and
+  // the change to the card was invisible on the page it is exported from.
+  const eyebrow = (CARD_API && CARD_API.EYEBROW) || 'what you are';
+  const sub = (CARD_API && CARD_API.WORDMARK_SUB) || '';
+  $('.me__eyebrow', meEl).textContent = eyebrow;
+  const foot = $('.me__foot', meEl);
+  if (foot) {
+    foot.innerHTML = `<code>npx codepend</code>${sub ? ' · ' + esc(sub) : ''} · computed on your machine`;
+  }
   $('#mename').textContent = c.name;
   const tg = $('#metag');
   tg.textContent = c.tagline; tg.hidden = !c.tagline;
