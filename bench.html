@@ -1,0 +1,168 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>codepend — video benchmark</title>
+<style>
+  :root { color-scheme: dark }
+  body { font: 15px/1.5 -apple-system, system-ui, sans-serif; background: #06070a; color: #e8e6e1;
+         margin: 0; padding: 22px 18px 60px }
+  h1 { font-size: 18px; margin: 0 0 4px }
+  p.sub { color: #82868f; margin: 0 0 20px }
+  button { font: 700 16px/1 inherit; background: #f0ede8; color: #111; border: 0;
+           border-radius: 999px; padding: 15px 24px; width: 100%; }
+  button[disabled] { opacity: .5 }
+  table { border-collapse: collapse; width: 100%; margin: 16px 0; font-size: 14px }
+  td { padding: 6px 8px; border-bottom: 1px solid #1c2026; vertical-align: top }
+  td:first-child { color: #82868f; width: 46% }
+  .ok { color: #5ec98a } .bad { color: #f0736a } .warn { color: #e0b34a }
+  #log { white-space: pre-wrap; font: 12px/1.5 ui-monospace, Menlo, monospace; color: #99a0aa;
+         background: #0d1015; border-radius: 10px; padding: 12px; margin-top: 16px }
+  .verdict { margin-top: 16px; padding: 14px; border-radius: 12px; background: #0d1015;
+             border: 1px solid #1c2026; font-size: 15px }
+</style>
+
+<h1>codepend — video benchmark</h1>
+<p class="sub">Open this where the export is slow. Tap once, wait ~20 s, send me the whole page.</p>
+
+<button id="go">Run the benchmark</button>
+<table id="t"></table>
+<div class="verdict" id="verdict" hidden></div>
+<div id="log">idle</div>
+
+<script>
+const T = document.getElementById('t');
+const LOG = document.getElementById('log');
+const lines = [];
+const log = (s) => { lines.push(s); LOG.textContent = lines.join('\n'); };
+function row(k, v, cls) {
+  const tr = T.insertRow();
+  tr.insertCell().textContent = k;
+  const c = tr.insertCell();
+  c.textContent = String(v);
+  if (cls) c.className = cls;
+}
+
+const n = navigator;
+row('userAgent', n.userAgent);
+row('CPU cores', n.hardwareConcurrency ?? 'unknown');
+row('device memory (GB)', n.deviceMemory ?? 'unknown');
+row('screen', `${screen.width}×${screen.height} @${devicePixelRatio}x`);
+row('in-app browser?', /FBAN|FBAV|Instagram|Line|Twitter|TelegramBot|; wv\)/i.test(n.userAgent)
+  ? 'likely — a WebView, tighter limits' : 'looks like a real browser');
+row('MediaRecorder', typeof MediaRecorder, typeof MediaRecorder === 'function' ? 'ok' : 'bad');
+
+const CODECS = ['video/mp4;codecs=avc1', 'video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'];
+let best = '';
+if (typeof MediaRecorder === 'function' && MediaRecorder.isTypeSupported) {
+  for (const m of CODECS) {
+    let s = false;
+    try { s = MediaRecorder.isTypeSupported(m); } catch (e) { /* probe threw */ }
+    if (s && !best) best = m;
+    row(m.replace('video/', ''), s, s ? 'ok' : 'bad');
+  }
+}
+
+/** Paint a frame roughly as heavy as the real one: art image + scrim + type. */
+function makeScene(w, h) {
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const g = c.getContext('2d');
+  const grd = g.createLinearGradient(0, 0, w, h);
+  grd.addColorStop(0, '#2a1a24'); grd.addColorStop(1, '#0a0810');
+  g.fillStyle = grd; g.fillRect(0, 0, w, h);
+  for (let i = 0; i < 40; i++) {
+    g.strokeStyle = `rgba(220,180,200,${0.02 + (i % 7) * 0.01})`;
+    g.lineWidth = 1 + (i % 5);
+    g.beginPath();
+    g.arc(w * 0.55, h * 0.35, 40 + i * 22, i * 0.3, i * 0.3 + 4.2);
+    g.stroke();
+  }
+  return c;
+}
+
+async function bench(w, h, fps, seconds, mime) {
+  const cv = document.createElement('canvas');
+  cv.width = w; cv.height = h;
+  const ctx = cv.getContext('2d', { alpha: false });
+  const art = makeScene(w, h);
+  const buf = document.createElement('canvas');
+  buf.width = w; buf.height = h;
+  const bctx = buf.getContext('2d', { alpha: false });
+
+  let stream = cv.captureStream(0);
+  const tracks = stream.getVideoTracks ? stream.getVideoTracks() : null;
+  const tk = tracks && tracks[0];
+  let push = () => {};
+  if (tk && typeof tk.requestFrame === 'function') push = () => { try { tk.requestFrame(); } catch (e) {} };
+  else { try { stream.getTracks().forEach((t) => t.stop()); } catch (e) {} stream = cv.captureStream(fps); }
+
+  const rec = new MediaRecorder(stream, mime ? { mimeType: mime, videoBitsPerSecond: 9e6 } : {});
+  const chunks = [];
+  rec.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
+  const done = new Promise((r) => { rec.onstop = r; });
+  rec.start(250);
+
+  const total = seconds * 1000;
+  const t0 = performance.now();
+  let frames = 0;
+  let worst = 0;
+  await new Promise((res) => {
+    const tick = () => {
+      const f0 = performance.now();
+      const el = f0 - t0;
+      // the real loop's shape: draw art, dissolve through a buffer, overlay type
+      bctx.drawImage(art, 0, 0);
+      ctx.drawImage(buf, 0, 0);
+      ctx.globalAlpha = 0.35 + 0.3 * Math.sin(el / 400);
+      ctx.drawImage(art, 0, 0);
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = '#F4F1EC';
+      ctx.font = `800 ${Math.round(h * 0.07)}px system-ui, sans-serif`;
+      ctx.fillText('The Everyday', w * 0.09, h * 0.42);
+      ctx.fillText('Companion', w * 0.09, h * 0.52);
+      push(); frames++;
+      const cost = performance.now() - f0;
+      if (cost > worst) worst = cost;
+      if (el > total) return res();
+      requestAnimationFrame(tick);
+    };
+    tick();
+  });
+  const wall = performance.now() - t0;
+  rec.stop();
+  await done;
+  const blob = new Blob(chunks, { type: rec.mimeType || mime || 'video/webm' });
+  return { frames, wall, worst, bytes: blob.size, fpsActual: frames / (wall / 1000) };
+}
+
+document.getElementById('go').onclick = async (e) => {
+  e.target.disabled = true;
+  lines.length = 0;
+  if (typeof MediaRecorder !== 'function') { log('MediaRecorder missing — the export cannot work here at all.'); return; }
+  log('codec: ' + (best || 'browser default'));
+  const out = {};
+  try {
+    for (const [name, w, h, fps] of [['1080×1920 @30', 1080, 1920, 30], ['720×1280 @24', 720, 1280, 24]]) {
+      log(`\nrunning ${name} for 6 s…`);
+      const r = await bench(w, h, fps, 6, best);
+      out[name] = r;
+      log(`  drew ${r.frames} frames in ${(r.wall / 1000).toFixed(1)} s`);
+      log(`  achieved ${r.fpsActual.toFixed(1)} fps  (target ${fps})`);
+      log(`  worst single frame ${r.worst.toFixed(0)} ms`);
+      log(`  ${(r.bytes / 1048576).toFixed(1)} MB for 6 s`);
+    }
+    const a = out['1080×1920 @30'], b = out['720×1280 @24'];
+    const projected = (r, fps) => (1380 / (r.fpsActual || 1)).toFixed(0);
+    const v = document.getElementById('verdict');
+    v.hidden = false;
+    v.innerHTML =
+      `<b>Projected wait for the real 46-second clip</b><br>` +
+      `at 1080×1920: about <b>${projected(a)} s</b><br>` +
+      `at 720×1280: about <b>${projected(b)} s</b><br><br>` +
+      `Speed-up from dropping to 720p: <b>${(b.fpsActual / (a.fpsActual || 1)).toFixed(1)}×</b>`;
+    log('\ndone — send me this whole page.');
+  } catch (err) {
+    log('FAILED: ' + (err && err.stack || err));
+  }
+  e.target.disabled = false;
+};
+</script>
