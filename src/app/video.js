@@ -14,6 +14,11 @@
      the same lockup grammar as the share card, so type stays crisp at 1080 wide
      instead of being an upscaled DOM rasterisation.
 
+   • The five charts live here but are not the clip's property. `paintChart()`
+     is the one public way to put a codepend figure on any canvas at any size —
+     the clip animates it, a share card asks for it finished. See the charts:
+     painting section. Anything that draws its own is a chart that will drift.
+
    • The generative art is SVG. Rasterising an SVG costs a decode, so each scene's
      art is turned into an <img> ONCE during preparation and then only ever
      drawn — never re-encoded per frame. Same for the grain, which is baked into
@@ -954,6 +959,13 @@ function drawScrim(ctx, sc, F) {
  * every coordinate is precomputed (see the geometry section), nothing allocates
  * here, and the one unavoidable object — the sparkline's gradient — is cached
  * per context because the cross-dissolve alternates between two canvases.
+ *
+ * They are also no longer the clip's private business. `paintChart()` at the
+ * bottom of this section is the ONE way in, for the clip and for the share card
+ * alike: the same five drawings, the same normaliser, the same geometry. The
+ * individual painters stay module-private on purpose — a second public door is
+ * a second thing to keep in step, and the export dropping the chart entirely is
+ * exactly the bug this file is now the single source of truth against.
  */
 
 /** The chart's own animation window, inside the scene. */
@@ -989,7 +1001,84 @@ function alignedX(ctx, text, x, anchor) {
   return anchor === 'right' ? x - w : x - w / 2;
 }
 
-function paintClock(ctx, g, p, acc, F) {
+/* ── what a painter needs besides geometry ────────────────────────────── */
+
+/**
+ * Type colours and the family to set them in. A caller that already has the
+ * clip's field object passes it straight through and nothing is allocated;
+ * anything short of a full set is filled in from these.
+ */
+export const CHART_INK = {
+  ink0: '#F4F1EC',
+  ink1: '#B9B4AC',
+  ink2: '#827D75',
+  inkInv: '#06070A',
+  rule: 'rgba(255,255,255,.18)',
+  scrim: '5,6,10',
+  display: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+};
+
+function inkFields(ink) {
+  if (!ink) return CHART_INK;
+  if (ink.ink0 && ink.ink1 && ink.ink2 && ink.inkInv && ink.rule && ink.scrim && ink.display) return ink;
+  return Object.assign({}, CHART_INK, ink);
+}
+
+/** Three accents, night → day → highlight. */
+export const CHART_ACCENTS = ['#59AAF8', '#8771DE', '#A9C7F2'];
+
+function accentsOf(palette) {
+  const a = Array.isArray(palette) ? palette : (palette && palette.accents);
+  if (!Array.isArray(a) || !a.length) return CHART_ACCENTS;
+  if (a.length >= 3) return a;
+  return [a[0], a[1] || a[0], a[2] || a[1] || a[0]];
+}
+
+/**
+ * Which words a chart is allowed to say.
+ *
+ * The same drawing appears at three sizes — a 320px figure in the feed, a
+ * 1080-wide frame in the clip, a share card somewhere between — and the answer
+ * to "does a project name fit next to this arc" is different at each. So it is
+ * the caller's call, not a constant in here.
+ *
+ * The four switches are separated by what the text IS, not by where it sits:
+ *
+ *   axis    structural ticks the chart cannot be read without — the clock's
+ *           00/06/12/18. No user data, ever.
+ *   center  the in-chart lockup: the clock's peak hour, the donut's leading
+ *           share. A figure, plus its caption.
+ *   series  text lifted straight out of the corpus — donut arc labels, the
+ *           donut's hole caption, bar row labels. THIS IS THE ONE THE
+ *           "Hide project names" toggle turns off. Nothing else on the chart
+ *           can leak a name.
+ *   values  the numbers set beside a mark, e.g. a bar's count.
+ *   scale   multiplier on every in-chart type size. Geometry decides the sizes;
+ *           this only lets a smaller surface pull them down without touching
+ *           the pure layer.
+ */
+export const CHART_LABELS = { axis: true, center: true, series: true, values: true, scale: 1 };
+const LABELS_NONE = { axis: false, center: false, series: false, values: false, scale: 1 };
+const LABELS_MINIMAL = { axis: false, center: true, series: false, values: false, scale: 1 };
+const LABELS_ANON = { axis: true, center: true, series: false, values: true, scale: 1 };
+
+function labelFields(labels) {
+  if (labels == null || labels === true || labels === 'all') return CHART_LABELS;
+  if (labels === false || labels === 'none') return LABELS_NONE;
+  if (labels === 'minimal') return LABELS_MINIMAL;
+  if (labels === 'anonymous') return LABELS_ANON;
+  if (typeof labels !== 'object') return CHART_LABELS;
+  const s = Number(labels.scale);
+  return {
+    axis: labels.axis !== false,
+    center: labels.center !== false,
+    series: labels.series !== false,
+    values: labels.values !== false,
+    scale: isFinite(s) && s > 0 ? s : 1,
+  };
+}
+
+function paintClock(ctx, g, p, acc, F, L) {
   ctx.lineCap = 'round';
   ctx.lineWidth = Math.max(1, 1.6 * g.k);
   ctx.strokeStyle = F.rule;
@@ -1015,23 +1104,29 @@ function paintClock(ctx, g, p, acc, F) {
 
   const late = easeOutExpo(clamp((p - 0.45) / 0.55, 0, 1));
   if (late <= 0.001) return;
-  ctx.globalAlpha = late * 0.7;
-  setFont(ctx, 600, g.labSize, F.display);
-  ctx.fillStyle = F.ink2;
-  for (let i = 0; i < g.marks.length; i++) {
-    const m = g.marks[i];
-    ctx.fillText(m.label, alignedX(ctx, m.label, m.x, 'center'), m.y + g.labSize * 0.34);
+  const labSize = g.labSize * L.scale;
+  const bigSize = g.bigSize * L.scale;
+  const subSize = g.subSize * L.scale;
+  if (L.axis) {
+    ctx.globalAlpha = late * 0.7;
+    setFont(ctx, 600, labSize, F.display);
+    ctx.fillStyle = F.ink2;
+    for (let i = 0; i < g.marks.length; i++) {
+      const m = g.marks[i];
+      ctx.fillText(m.label, alignedX(ctx, m.label, m.x, 'center'), m.y + labSize * 0.34);
+    }
   }
+  if (!L.center) return;
   ctx.globalAlpha = late;
-  setFont(ctx, 800, g.bigSize, F.display);
+  setFont(ctx, 800, bigSize, F.display);
   ctx.fillStyle = F.ink0;
-  ctx.fillText(g.big, alignedX(ctx, g.big, g.cx, 'center'), g.cy + g.bigSize * 0.06);
-  setFont(ctx, 600, g.subSize, F.display);
+  ctx.fillText(g.big, alignedX(ctx, g.big, g.cx, 'center'), g.cy + bigSize * 0.06);
+  setFont(ctx, 600, subSize, F.display);
   ctx.fillStyle = F.ink2;
-  ctx.fillText(g.sub, alignedX(ctx, g.sub, g.cx, 'center'), g.cy + g.bigSize * 0.06 + g.subSize * 2.2);
+  ctx.fillText(g.sub, alignedX(ctx, g.sub, g.cx, 'center'), g.cy + bigSize * 0.06 + subSize * 2.2);
 }
 
-function paintDonut(ctx, g, p, acc, F) {
+function paintDonut(ctx, g, p, acc, F, L) {
   const swept = easeInOut(p);
   const end = -Math.PI / 2 + TAU * swept;
   ctx.lineCap = 'butt';
@@ -1046,29 +1141,42 @@ function paintDonut(ctx, g, p, acc, F) {
     ctx.arc(g.cx, g.cy, g.r, a.a0, a1);
     ctx.stroke();
   }
+  const labSize = g.labSize * L.scale;
+  const bigSize = g.bigSize * L.scale;
+  const subSize = g.subSize * L.scale;
   // Labels sit on the mark, not in a legend — but only once their arc exists.
-  setFont(ctx, 600, g.labSize, F.display);
-  ctx.fillStyle = F.ink2;
-  for (let i = 0; i < g.arcs.length; i++) {
-    const a = g.arcs[i];
-    if (!a.roomy) continue;
-    const e = clamp((end - a.a1) / 0.35, 0, 1);
-    if (e <= 0.001) continue;
-    ctx.globalAlpha = e;
-    ctx.fillText(a.label, alignedX(ctx, a.label, a.labelX, a.anchor), a.labelY + g.labSize * 0.34);
+  if (L.series) {
+    setFont(ctx, 600, labSize, F.display);
+    ctx.fillStyle = F.ink2;
+    for (let i = 0; i < g.arcs.length; i++) {
+      const a = g.arcs[i];
+      if (!a.roomy) continue;
+      // The last arc ends a gap short of `end`, so the fade-in it is scored
+      // against never quite reaches 1 while it is being drawn. On a still card
+      // that left the final label at 7% alpha — invisible — and the clip held
+      // the same near-blank label for the whole tail of the scene. A finished
+      // chart is finished: past p=1 every label it earned is fully set.
+      const e = p >= 1 ? 1 : clamp((end - a.a1) / 0.35, 0, 1);
+      if (e <= 0.001) continue;
+      ctx.globalAlpha = e;
+      ctx.fillText(a.label, alignedX(ctx, a.label, a.labelX, a.anchor), a.labelY + labSize * 0.34);
+    }
   }
   const late = easeOutExpo(clamp((p - 0.4) / 0.6, 0, 1));
-  if (late <= 0.001) return;
+  if (late <= 0.001 || !L.center) return;
   ctx.globalAlpha = late;
-  setFont(ctx, 800, g.bigSize, F.display);
+  setFont(ctx, 800, bigSize, F.display);
   ctx.fillStyle = F.ink0;
-  ctx.fillText(g.big, alignedX(ctx, g.big, g.cx, 'center'), g.cy + g.bigSize * 0.06);
-  setFont(ctx, 600, g.subSize, F.display);
+  ctx.fillText(g.big, alignedX(ctx, g.big, g.cx, 'center'), g.cy + bigSize * 0.06);
+  // The hole's caption is the leading project's own name, so it answers to
+  // `series` and not to `center`: hiding project names must hide this too.
+  if (!L.series) return;
+  setFont(ctx, 600, subSize, F.display);
   ctx.fillStyle = F.ink2;
-  ctx.fillText(g.sub, alignedX(ctx, g.sub, g.cx, 'center'), g.cy + g.bigSize * 0.06 + g.subSize * 2.2);
+  ctx.fillText(g.sub, alignedX(ctx, g.sub, g.cx, 'center'), g.cy + bigSize * 0.06 + subSize * 2.2);
 }
 
-function paintBars(ctx, g, p, acc, F) {
+function paintBars(ctx, g, p, acc, F, L) {
   for (let i = 0; i < g.bars.length; i++) {
     const b = g.bars[i];
     const e = easeOutExpo(stagger(p, i, g.bars.length, 0.5));
@@ -1081,18 +1189,25 @@ function paintBars(ctx, g, p, acc, F) {
     roundRect(ctx, b.x, b.y, Math.max(g.radius * 2, b.w * e), b.h, g.radius);
     ctx.fill();
   }
+  if (!L.series && !L.values) return;
+  const labSize = g.labSize * L.scale;
+  const valSize = g.valSize * L.scale;
   for (let i = 0; i < g.bars.length; i++) {
     const b = g.bars[i];
     const e = easeOutExpo(stagger(p, i, g.bars.length, 0.5));
     if (e <= 0.05) continue;
     ctx.globalAlpha = e;
-    setFont(ctx, 600, g.labSize, F.display);
-    ctx.fillStyle = b.labelInside ? F.inkInv : F.ink2;
-    ctx.fillText(b.label, b.labelInside ? b.x + 14 * g.k : b.x + b.w * e + 14 * g.k, b.y + b.h / 2 + g.labSize * 0.34);
-    setFont(ctx, 700, g.valSize, F.display);
-    ctx.fillStyle = b.valueInside ? F.inkInv : F.ink1;
-    const vx = b.x + g.trackW - 12 * g.k;
-    ctx.fillText(b.text, alignedX(ctx, b.text, vx, 'right'), b.y + b.h / 2 + g.valSize * 0.32);
+    if (L.series) {
+      setFont(ctx, 600, labSize, F.display);
+      ctx.fillStyle = b.labelInside ? F.inkInv : F.ink2;
+      ctx.fillText(b.label, b.labelInside ? b.x + 14 * g.k : b.x + b.w * e + 14 * g.k, b.y + b.h / 2 + labSize * 0.34);
+    }
+    if (L.values) {
+      setFont(ctx, 700, valSize, F.display);
+      ctx.fillStyle = b.valueInside ? F.inkInv : F.ink1;
+      const vx = b.x + g.trackW - 12 * g.k;
+      ctx.fillText(b.text, alignedX(ctx, b.text, vx, 'right'), b.y + b.h / 2 + valSize * 0.32);
+    }
   }
 }
 
@@ -1107,7 +1222,7 @@ function sparkGradient(ctx, g, acc) {
   return grad;
 }
 
-function paintSpark(ctx, g, p, acc, F) {
+function paintSpark(ctx, g, p, acc) {
   const e = easeInOut(p);
   if (e <= 0.001) return;
   ctx.save();
@@ -1147,7 +1262,7 @@ function paintSpark(ctx, g, p, acc, F) {
   ctx.fill();
 }
 
-function paintHeat(ctx, g, p, acc, F) {
+function paintHeat(ctx, g, p, acc) {
   ctx.fillStyle = acc[0];
   for (let i = 0; i < g.cells.length; i++) {
     const c = g.cells[i];
@@ -1159,7 +1274,7 @@ function paintHeat(ctx, g, p, acc, F) {
   }
 }
 
-function paintCast(ctx, g, p, acc, F) {
+function paintCast(ctx, g, p, acc, F, L) {
   for (let i = 0; i < g.rows.length; i++) {
     const r = g.rows[i];
     const e = easeOutExpo(stagger(p, i, g.rows.length, 0.5));
@@ -1170,12 +1285,18 @@ function paintCast(ctx, g, p, acc, F) {
     ctx.beginPath();
     ctx.arc(r.dotX, r.dotY + dy, r.dotR, 0, TAU);
     ctx.fill();
-    setFont(ctx, 700, r.nameSize, F.display);
-    ctx.fillStyle = F.ink0;
-    ctx.fillText(r.name, r.textX, r.y + dy);
-    setFont(ctx, 600, r.pctSize, F.display);
-    ctx.fillStyle = F.ink2;
-    ctx.fillText(r.pct, alignedX(ctx, r.pct, r.rightX, 'right'), r.y + dy);
+    // These are product names, not the user's projects, so they answer to
+    // `series` only because that is where every from-the-corpus string lives.
+    if (L.series) {
+      setFont(ctx, 700, r.nameSize * L.scale, F.display);
+      ctx.fillStyle = F.ink0;
+      ctx.fillText(r.name, r.textX, r.y + dy);
+    }
+    if (L.values) {
+      setFont(ctx, 600, r.pctSize * L.scale, F.display);
+      ctx.fillStyle = F.ink2;
+      ctx.fillText(r.pct, alignedX(ctx, r.pct, r.rightX, 'right'), r.y + dy);
+    }
   }
   const bar = easeOutExpo(clamp((p - 0.25) / 0.75, 0, 1));
   if (bar <= 0.001) return;
@@ -1194,32 +1315,125 @@ function paintCast(ctx, g, p, acc, F) {
   }
 }
 
+/**
+ * Is this already the output of normalizeChart()?
+ *
+ * Matters because the entry point takes a chart in whatever state the caller
+ * has it: the clip normalises once at prepare time, the page keeps normalised
+ * charts on its scenes, and a share card may well hand over the raw payload
+ * straight off the Memory. Running the normaliser twice is not harmless — the
+ * donut folds its tail into "other" and would fold the fold — so it is asked
+ * first rather than run blind.
+ */
+function asNormalized(chart) {
+  if (!chart || !chart.type) return null;
+  const t = chart.type;
+  if (t === 'clock') return Array.isArray(chart.bins) ? chart : normalizeChart(chart);
+  if (t === 'heat') return Array.isArray(chart.values) ? chart : normalizeChart(chart);
+  if (t === 'spark') return Array.isArray(chart.points) ? chart : normalizeChart(chart);
+  if (t === 'bars' || t === 'donut') return Array.isArray(chart.rows) ? chart : normalizeChart(chart);
+  return normalizeChart(chart);
+}
+
+/**
+ * Draw one chart. The only public way to put a codepend figure on a canvas.
+ *
+ * `progress` is what separates the two surfaces and it is the ONLY thing that
+ * does: the clip runs it 0 → 1 across the scene, a still card passes 1 (the
+ * default) and gets the finished drawing. Same normaliser, same pure geometry,
+ * same strokes — so the card in the feed, the frame in the clip and the PNG a
+ * user posts are one drawing at three sizes rather than three drawings.
+ *
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {{type:string, data:*, note?:string}|null} chart raw, as a Memory
+ *   carries it — or already normalised, or null when `opts.geometry` is given.
+ * @param {{x:number,y:number,w:number,h:number}|null} box where it goes; ignored
+ *   when `opts.geometry` is given.
+ * @param {{palette?:object|string[], ink?:object, progress?:number,
+ *          labels?:boolean|string|object, geometry?:object,
+ *          panel?:number|boolean|{alpha:number,inset?:number,radius?:number}}} [opts]
+ *   `geometry` short-circuits the pure layer for callers that resolved it ahead
+ *   of time (the clip does, at prepare time, so no frame does arithmetic); such
+ *   geometry is assumed to have been through annotateChart() already.
+ *   `panel` lays the scrim rectangle down first, for a chart drawn over art.
+ * @returns {object|null} the geometry that was drawn, or null if nothing was —
+ *   an unknown type, an empty series or a box with no room is a no-op.
+ */
+export function paintChart(ctx, chart, box, opts) {
+  if (!ctx) return null;
+  const o = opts || {};
+  const F = inkFields(o.ink);
+  const g = o.geometry || chartGeometry(asNormalized(chart), box);
+  if (!g || !g.type) return null;
+
+  const raw = Number(o.progress);
+  const p = o.progress == null ? 1 : clamp(isFinite(raw) ? raw : 1, 0, 1);
+  const acc = accentsOf(o.palette);
+  const L = labelFields(o.labels);
+
+  ctx.save();
+  ctx.textBaseline = 'alphabetic';
+  ctx.globalAlpha = 1;
+
+  if (o.panel) {
+    // A scrim so the drawing survives whatever the generative art is doing
+    // behind it. The inset shrinks with the figure: 30px around a 1080-wide
+    // frame is a margin, around a 300px thumbnail it is the whole picture.
+    const cfg = typeof o.panel === 'object' ? o.panel : null;
+    const a = cfg ? cfg.alpha : (o.panel === true ? 0.55 : Number(o.panel));
+    if (isFinite(a) && a > 0.001) {
+      const s = Math.min(1, g.k || 1);
+      const inset = cfg && cfg.inset != null ? cfg.inset : 30 * s;
+      const radius = cfg && cfg.radius != null ? cfg.radius : 26 * s;
+      ctx.globalAlpha = Math.min(1, a);
+      ctx.fillStyle = `rgb(${F.scrim})`;
+      roundRect(ctx, g.bounds.x - inset, g.bounds.y - inset,
+        g.bounds.w + inset * 2, g.bounds.h + inset * 2, radius);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  // Bars are the one geometry that cannot be finished without a context to
+  // measure with. The clip pays for that once, at prepare time; a caller who
+  // let us build the geometry pays for it here, which is still once per draw.
+  if (!o.geometry && g.type === 'bars') annotateChart(ctx, g, F);
+
+  if (g.type === 'clock') paintClock(ctx, g, p, acc, F, L);
+  else if (g.type === 'donut') paintDonut(ctx, g, p, acc, F, L);
+  else if (g.type === 'bars') paintBars(ctx, g, p, acc, F, L);
+  else if (g.type === 'spark') paintSpark(ctx, g, p, acc);
+  else if (g.type === 'heat') paintHeat(ctx, g, p, acc);
+  else if (g.type === 'cast') paintCast(ctx, g, p, acc, F, L);
+  else { ctx.restore(); ctx.globalAlpha = 1; return null; }
+
+  ctx.restore();
+  ctx.globalAlpha = 1;
+  return g;
+}
+
+/**
+ * Reused so the 30 fps path allocates nothing per frame. Painting is
+ * synchronous and non-reentrant — the cross-dissolve paints two scenes, but one
+ * after the other — so one scratch object is safe and one is all there is.
+ */
+const FRAME_CHART_OPTS = { geometry: null, progress: 1, palette: null, ink: null, panel: 0 };
+
 /** The middle band of one scene: the translucent panel, then the figure. */
 function paintChartLayer(ctx, sc, localMs, F) {
   const g = sc.chartGeo;
   if (!g) return;
-  const p = clamp((localMs - CHART_DELAY) / CHART_MS, 0, 1);
-  const acc = (sc.pal && sc.pal.accents) || ['#59AAF8', '#8771DE', '#A9C7F2'];
   const panel = easeOutExpo(clamp(localMs / 420, 0, 1));
-
-  ctx.save();
-  ctx.textBaseline = 'alphabetic';
-  if (g.type !== 'cast' && panel > 0.001) {
-    // The story card's own figure treatment: a scrim panel so the drawing is
-    // legible over whatever the generative art is doing behind it.
-    ctx.globalAlpha = panel * 0.55;
-    ctx.fillStyle = `rgb(${F.scrim})`;
-    roundRect(ctx, g.bounds.x - 30, g.bounds.y - 30, g.bounds.w + 60, g.bounds.h + 60, 26);
-    ctx.fill();
-  }
-  if (g.type === 'clock') paintClock(ctx, g, p, acc, F);
-  else if (g.type === 'donut') paintDonut(ctx, g, p, acc, F);
-  else if (g.type === 'bars') paintBars(ctx, g, p, acc, F);
-  else if (g.type === 'spark') paintSpark(ctx, g, p, acc, F);
-  else if (g.type === 'heat') paintHeat(ctx, g, p, acc, F);
-  else if (g.type === 'cast') paintCast(ctx, g, p, acc, F);
-  ctx.restore();
-  ctx.globalAlpha = 1;
+  FRAME_CHART_OPTS.geometry = g;
+  FRAME_CHART_OPTS.progress = clamp((localMs - CHART_DELAY) / CHART_MS, 0, 1);
+  FRAME_CHART_OPTS.palette = sc.pal;
+  FRAME_CHART_OPTS.ink = F;
+  // The cast block is type on a bar, not a figure in a frame — it was never
+  // panelled and still is not.
+  FRAME_CHART_OPTS.panel = g.type === 'cast' ? 0 : panel * 0.55;
+  // No `labels`: at 1080 wide the clip has room for every word the chart knows.
+  // Redaction has already happened upstream, in the payload.
+  paintChart(ctx, null, null, FRAME_CHART_OPTS);
 }
 
 /** Numbers land on the truth: the count-up finishes well before the scene does. */
@@ -1505,6 +1719,9 @@ export function createExporter(deps) {
       const total = plan.duration;
       const TAIL = 140;               // hold the last frame so it is definitely sampled
       const FRAME_MS = Math.max(1, Math.round(1000 / (plan.fps || VIDEO_FPS)));
+      let nextFrameAt = 0;            // when the next frame is due, on the same clock
+      let painted = 0;                // frames actually handed over, for the caller
+      let tailPainted = false;        // the held final frame, drawn once
 
       // Two drivers, whichever fires first.
       //
@@ -1536,8 +1753,35 @@ export function createExporter(deps) {
           return;
         }
         const t = (win.performance || Date).now() - t0;
-        paintFrame(ctx, plan, Math.min(t, total - 1), F, D, buf);
-        pushFrame();
+
+        // Paint on the frame grid, not on every wake-up.
+        //
+        // The loop arms rAF and a FRAME_MS timer together and takes whichever
+        // lands first, which is always rAF: every 16.7 ms on a 60 Hz screen and
+        // every 8 ms on an iPhone's 120 Hz one. So a clip declared at 30 fps was
+        // handing the encoder two to four times that many frames. It kept up
+        // until it didn't, and the frames it dropped it dropped unevenly — which
+        // is what "very harsh frame-by-frame animation" in the finished video
+        // actually was. `plan.fps` was decorative.
+        //
+        // Waking often is still right: it is how a throttled tab is caught up
+        // and how the clock stays honest. Only the painting is rationed.
+        // The tail exists so the recorder definitely samples the final frame —
+        // one held frame, not a burst. Painting every wake-up through it added
+        // seventeen frames to a three-second clip on a 120 Hz screen.
+        const due = nextFrameAt <= t || (t >= total && !tailPainted);
+        if (t >= total) tailPainted = true;
+        if (due) {
+          // Advance one frame at a time so the rate stays at the target, and
+          // resync only when a stall has put us more than a frame behind —
+          // otherwise every hiccup would grant an extra frame and the clip
+          // would drift above its declared fps.
+          nextFrameAt += FRAME_MS;
+          if (nextFrameAt < t - FRAME_MS) nextFrameAt = t + FRAME_MS;
+          paintFrame(ctx, plan, Math.min(t, total - 1), F, D, buf);
+          pushFrame();
+          painted++;
+        }
         if (o.onProgress) { try { o.onProgress(clamp(t / total, 0, 1)); } catch (e) { /* noop */ } }
         if (t >= total + TAIL) {
           stopped = true;
@@ -1559,9 +1803,20 @@ export function createExporter(deps) {
   return { supported, prepare, record, plan: planStoryboard, charts: CHART_API };
 }
 
+/**
+ * The chart layer as one object, for surfaces that reach this file through the
+ * exporter rather than through an import. `paint` is the whole point of it: any
+ * canvas in the page — the share card included — draws a codepend figure by
+ * calling this and nothing else.
+ */
 export const CHART_API = {
   normalize: normalizeChart,
   geometry: chartGeometry,
+  annotate: annotateChart,
+  paint: paintChart,
+  labels: CHART_LABELS,
+  ink: CHART_INK,
+  accents: CHART_ACCENTS,
   cast: castFromTimeline,
   castHeadline,
   agentNames: AGENT_NAMES,
