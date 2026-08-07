@@ -1586,10 +1586,23 @@ async function exportVideo() {
       onPrepare: (p) => vidProgress(0.02 + p * 0.2, 'Drawing the cards…'),
     }));
     if (vidCancel) throw new Error('cancelled');
-    vidProgress(0.22, 'Recording · about 15 seconds');
+    // Say how long this really takes, and count it down.
+    //
+    // The label was a hardcoded "about 15 seconds" from when the clip was
+    // fifteen seconds long. Cards are held for as long as they take to read
+    // now, so it runs to about forty-five — and a bar that promises fifteen and
+    // then does not finish for three times that reads as a freeze, especially
+    // on a phone where the bar is the only thing on screen. Measured on an
+    // iPhone: 58 fps of drawing, 2 ms for the worst frame. Nothing was slow.
+    // The wait is real and unavoidable — MediaRecorder stamps frames with the
+    // wall clock, so a forty-five second video takes forty-five seconds to
+    // record — so the only honest thing to do is say so.
+    const totalS = Math.round((plan.duration || 0) / 1000) || 45;
+    const remaining = (p) => Math.max(0, Math.ceil(totalS * (1 - p)));
+    vidProgress(0.22, `Recording · ${totalS} seconds, in real time`);
     result = await VIDEO_API.record(plan, {
       name: (PROFILE.archetype || {}).name,
-      onProgress: (p) => vidProgress(0.22 + p * 0.76, 'Recording · about 15 seconds'),
+      onProgress: (p) => vidProgress(0.22 + p * 0.76, `Recording · ${remaining(p)}s left`),
       cancelled: () => vidCancel,
     });
     if (result && result.blob) {
