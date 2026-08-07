@@ -24,9 +24,10 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  normalizeChart, chartGeometry,
+  normalizeChart, chartGeometry, annotateChart, paintChart,
   clockGeometry, donutGeometry, barsGeometry, sparkGeometry, heatGeometry, castGeometry,
   castFromTimeline, castHeadline, AGENT_NAMES, HEAT_OPS,
+  CHART_API, CHART_INK, CHART_LABELS,
   planStoryboard, trimMids, SCENE_TIMING, VIDEO_TARGET_MS,
 } from '../src/app/video.js';
 
@@ -418,6 +419,248 @@ test('over budget, a card with a chart outlives a card without one', () => {
 test('when every card carries a chart the trim still fits the budget', () => {
   const mids = Array.from({ length: 9 }, (_, i) => ({ id: i, chart: { type: 'bars' } }));
   assert.equal(trimMids(mids, 7).length, 7);
+});
+
+/* ── 10. paintChart: one door for the clip and the card ────────────────── */
+
+/*
+ * The bug this section exists for: the share card used to be a generic
+ * composition that never drew a chart at all, so "you've used every hour except
+ * 3 AM" over a radial clock exported as contour art and a big number. The clip
+ * had the drawings; nothing else could reach them.
+ *
+ * paintChart() is now the only way in, and these tests hold it to the two
+ * things that make that worth anything — it survives every type at every size,
+ * and the still card at progress 1 is the same drawing as the clip's last
+ * frame rather than a second implementation of it.
+ */
+
+function fontSize(font) {
+  const m = /(\d+(?:\.\d+)?)px/.exec(String(font || '16px'));
+  return m ? Number(m[1]) : 16;
+}
+
+/** A 2D context that draws nothing and remembers everything, in order. */
+function stubCtx() {
+  const log = [];
+  const r = (v) => (typeof v === 'number' ? Math.round(v * 1000) / 1000 : v);
+  const fmt = (v) => (v && v.__gradient ? 'gradient' : String(r(v)));
+  const op = (name) => (...a) => { log.push(`${name}(${a.map(fmt).join(' ')})`); };
+  const ctx = {
+    log,
+    save: op('save'),
+    restore: op('restore'),
+    beginPath: op('beginPath'),
+    closePath: op('closePath'),
+    moveTo: op('moveTo'),
+    lineTo: op('lineTo'),
+    rect: op('rect'),
+    arc: op('arc'),
+    arcTo: op('arcTo'),
+    clip: op('clip'),
+    fill: op('fill'),
+    stroke: op('stroke'),
+    fillRect: op('fillRect'),
+    fillText: (t, x, y) => { log.push(`fillText(${t} ${r(x)} ${r(y)})`); },
+    measureText: (t) => ({ width: String(t).length * 0.55 * fontSize(ctx.font) }),
+    createLinearGradient: (...a) => {
+      log.push(`gradient(${a.map(fmt).join(' ')})`);
+      return { __gradient: true, addColorStop: (o, c) => log.push(`stop(${r(o)} ${c})`) };
+    },
+  };
+  for (const prop of ['fillStyle', 'strokeStyle', 'globalAlpha', 'lineWidth',
+    'lineCap', 'lineJoin', 'font', 'textBaseline']) {
+    let v;
+    Object.defineProperty(ctx, prop, {
+      get: () => v,
+      set: (x) => { v = x; log.push(`${prop}=${fmt(x)}`); },
+    });
+  }
+  return ctx;
+}
+
+const PAYLOADS = {
+  clock: { type: 'clock', data: [138, 12, 3, 0, 1, 2, 46, 56, 105, 247, 398, 381, 588, 542, 424, 334, 344, 373, 361, 397, 327, 296, 265, 123] },
+  donut: { type: 'donut', data: [{ label: 'superagent', v: 57 }, { label: 'memgram', v: 21 }, { label: 'dotfiles', v: 12 }, { label: 'scratch', v: 10 }] },
+  bars: { type: 'bars', data: [{ label: 'Other', v: 50606 }, { label: 'Script', v: 20563 }, { label: 'Shell', v: 6733 }] },
+  spark: { type: 'spark', data: [55, 21, 43, 7, 16, 1, 26, 4, 15, 60] },
+  heat: { type: 'heat', data: Array.from({ length: 91 }, (_, i) => i % 9) },
+};
+
+/** The three surfaces, roughly: a feed figure, a share card, a 1080 frame. */
+const BOXES = [
+  { x: 0, y: 0, w: 300, h: 300 },
+  { x: 40, y: 120, w: 620, h: 420 },
+  BOX,
+];
+
+const PALETTE = { accents: ['#59AAF8', '#8771DE', '#A9C7F2'] };
+
+/** Everything but the font declarations — see the note in the drift test. */
+const strokes = (log) => log.filter((l) => !/^font=/.test(l));
+
+/** Geometry minus the per-context gradient cache, which is not data. */
+const bare = (g) => {
+  const out = {};
+  for (const k in g) if (k !== 'grads') out[k] = g[k];
+  return out;
+};
+
+test('every chart type paints into a context at every size, and draws something', () => {
+  for (const [type, raw] of Object.entries(PAYLOADS)) {
+    for (const box of BOXES) {
+      const ctx = stubCtx();
+      const g = paintChart(ctx, raw, box, { palette: PALETTE, ink: CHART_INK });
+      assert.ok(g, `${type} at ${box.w}×${box.h} produced geometry`);
+      assert.equal(g.type, type);
+      assert.ok(ctx.log.length > 4, `${type} at ${box.w}×${box.h} actually drew`);
+      assert.equal(ctx.log.filter((l) => l === 'save()').length,
+        ctx.log.filter((l) => l === 'restore()').length, 'save/restore balance');
+    }
+  }
+});
+
+test('a chart survives being handed to the painter mid-animation and finished', () => {
+  for (const [type, raw] of Object.entries(PAYLOADS)) {
+    for (const p of [0, 0.001, 0.37, 0.999, 1]) {
+      const ctx = stubCtx();
+      assert.ok(paintChart(ctx, raw, BOX, { progress: p, palette: PALETTE }),
+        `${type} at progress ${p}`);
+    }
+  }
+});
+
+test('progress 1 draws exactly what the clip draws on its last frame', () => {
+  // The clip resolves geometry once, at prepare time, and hands it back to the
+  // painter every frame; a still card hands over the raw payload and lets the
+  // painter resolve it. Two ways in is two things that can drift, so they are
+  // held to the same output here.
+  //
+  // Font declarations are dropped from the comparison for one honest reason:
+  // the still path runs annotateChart() inline (it has the only context there
+  // is), and measuring a bar's label sets the font. Where that measurement
+  // LANDS is still compared — it is baked into every fillText x below.
+  for (const [type, raw] of Object.entries(PAYLOADS)) {
+    const scratch = stubCtx();
+    const prepared = annotateChart(scratch, chartGeometry(normalizeChart(raw), BOX), CHART_INK);
+
+    const a = stubCtx();
+    const drawnStill = paintChart(a, raw, BOX, { progress: 1, palette: PALETTE, ink: CHART_INK });
+
+    const b = stubCtx();
+    paintChart(b, null, null, { geometry: prepared, progress: 1, palette: PALETTE, ink: CHART_INK });
+
+    assert.deepEqual(bare(drawnStill), bare(prepared), `${type} geometry`);
+    assert.deepEqual(strokes(a.log), strokes(b.log), `${type} strokes`);
+    assert.ok(a.log.some((l) => l.startsWith('fill') || l === 'stroke()'), `${type} has ink on it`);
+  }
+});
+
+test('the donut\'s last label is fully set once the ring has closed', () => {
+  // It ends a 1.5° gap short of the sweep it is scored against, so it used to
+  // fade in to 7% and stop — invisible on a still card, and near-invisible for
+  // the whole tail of the clip's scene.
+  const ctx = stubCtx();
+  paintChart(ctx, PAYLOADS.donut, BOX, { progress: 1, palette: PALETTE });
+  const i = ctx.log.findIndex((l) => l.startsWith('fillText(SCRATCH'));
+  assert.ok(i > 0, 'the last segment is labelled at all');
+  const alpha = ctx.log.slice(0, i).reverse().find((l) => l.startsWith('globalAlpha='));
+  assert.equal(alpha, 'globalAlpha=1', 'and at full strength');
+});
+
+test('an unknown chart is a no-op rather than a crash', () => {
+  for (const chart of [null, undefined, {}, { type: 'sankey', data: [1, 2, 3] },
+    { type: 'clock', data: new Array(24).fill(0) }, { type: 'bars', data: [] }]) {
+    const ctx = stubCtx();
+    assert.equal(paintChart(ctx, chart, BOX, { palette: PALETTE }), null, JSON.stringify(chart));
+    assert.deepEqual(ctx.log, [], 'nothing was drawn, and nothing threw');
+  }
+  // A geometry of a type no painter knows leaves the context as it found it.
+  const ctx = stubCtx();
+  const geometry = { type: 'treemap', k: 1, bounds: { x: 0, y: 0, w: 10, h: 10 } };
+  assert.equal(paintChart(ctx, null, null, { geometry }), null);
+  assert.equal(ctx.log.filter((l) => l === 'save()').length, 1);
+  assert.equal(ctx.log.filter((l) => l === 'restore()').length, 1);
+  assert.equal(paintChart(null, PAYLOADS.clock, BOX), null, 'no context, no drawing');
+  assert.equal(paintChart(stubCtx(), PAYLOADS.clock, { x: 0, y: 0, w: 0, h: 0 }), null);
+});
+
+test('labels are the caller\'s call, and turning them off silences the words only', () => {
+  const words = (ctx) => ctx.log.filter((l) => l.startsWith('fillText('));
+
+  const full = stubCtx();
+  paintChart(full, PAYLOADS.clock, BOX, { palette: PALETTE });
+  assert.ok(words(full).length >= 6, 'by default the clock says everything it knows');
+
+  const mute = stubCtx();
+  paintChart(mute, PAYLOADS.clock, BOX, { palette: PALETTE, labels: false });
+  assert.deepEqual(words(mute), [], 'labels:false sets no type at all');
+  assert.ok(mute.log.filter((l) => l === 'stroke()').length >= 24, 'the rays are still drawn');
+
+  const min = stubCtx();
+  paintChart(min, PAYLOADS.clock, BOX, { palette: PALETTE, labels: 'minimal' });
+  assert.deepEqual(words(min).map((l) => l.split(' ')[0].slice(9)), ['12', 'PEAK'],
+    'minimal keeps the lockup and drops the hour ticks');
+});
+
+test('hiding project names reaches the chart, not just the copy', () => {
+  const leaks = (ctx) => ctx.log.some((l) => /SUPERAGENT|MEMGRAM|DOTFILES|SCRATCH/.test(l));
+
+  const shown = stubCtx();
+  paintChart(shown, PAYLOADS.donut, BOX, { palette: PALETTE });
+  assert.equal(leaks(shown), true, 'by default the donut is labelled with real projects');
+
+  const hidden = stubCtx();
+  paintChart(hidden, PAYLOADS.donut, BOX, { palette: PALETTE, labels: { series: false } });
+  assert.equal(leaks(hidden), false, 'no arc label, and no name in the hole either');
+  assert.ok(hidden.log.some((l) => l.startsWith('fillText(57%')),
+    'the share it is about is still the point of the picture');
+  assert.ok(hidden.log.filter((l) => l === 'stroke()').length >= 4, 'the ring is untouched');
+
+  const bars = stubCtx();
+  paintChart(bars, { type: 'bars', data: [{ label: 'superagent', v: 9 }] }, BOX,
+    { palette: PALETTE, labels: 'anonymous' });
+  assert.equal(bars.log.some((l) => /SUPERAGENT/.test(l)), false, 'bars answer to it too');
+  assert.ok(bars.log.some((l) => l.startsWith('fillText(9 ')), 'the number survives');
+});
+
+test('label scale shrinks the type without moving a single coordinate', () => {
+  const sizes = (ctx) => ctx.log.filter((l) => l.startsWith('font=')).map(fontSize);
+  const a = stubCtx();
+  const ga = paintChart(a, PAYLOADS.clock, BOX, { palette: PALETTE });
+  const b = stubCtx();
+  const gb = paintChart(b, PAYLOADS.clock, BOX, { palette: PALETTE, labels: { scale: 0.5 } });
+  assert.deepEqual(bare(gb), bare(ga), 'the pure layer never hears about it');
+  const sa = sizes(a); const sb = sizes(b);
+  assert.equal(sa.length, sb.length);
+  for (let i = 0; i < sa.length; i++) assert.ok(sb[i] < sa[i], `declaration ${i} came down`);
+});
+
+test('the panel is drawn under the figure, scaled to it, and is opt-in', () => {
+  const plain = stubCtx();
+  paintChart(plain, PAYLOADS.clock, BOX, { palette: PALETTE });
+  assert.equal(plain.log.filter((l) => l === 'arcTo').length, 0);
+  const first = plain.log.findIndex((l) => l === 'fill()' || l === 'stroke()');
+  assert.equal(plain.log[first], 'stroke()', 'with no panel the first mark is the chart itself');
+
+  const panelled = stubCtx();
+  paintChart(panelled, PAYLOADS.clock, BOX, { palette: PALETTE, panel: 0.55 });
+  const at = panelled.log.findIndex((l) => l === 'fill()');
+  assert.ok(at > 0 && at < panelled.log.indexOf('stroke()'), 'the panel lands first');
+  assert.ok(panelled.log.some((l) => l === 'globalAlpha=0.55'));
+
+  const off = stubCtx();
+  paintChart(off, PAYLOADS.clock, BOX, { palette: PALETTE, panel: 0 });
+  assert.deepEqual(off.log, plain.log, 'a zero panel is no panel');
+});
+
+test('the painter is reachable through the exporter\'s chart API', () => {
+  // render.js inlines this file and hands app.js only what it lists. A painter
+  // nothing can call is the bug that started all this, one layer down.
+  assert.equal(CHART_API.paint, paintChart);
+  assert.equal(CHART_API.geometry, chartGeometry);
+  assert.equal(CHART_API.normalize, normalizeChart);
+  assert.deepEqual(CHART_LABELS, { axis: true, center: true, series: true, values: true, scale: 1 });
 });
 
 test('the whole path holds: real payload → scene → geometry', () => {

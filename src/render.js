@@ -3,7 +3,8 @@
    Turns the buildMemories() payload into ONE self-contained HTML file.
 
    Everything is inlined: the payload JSON, app.css, app.js, src/art.js, and the
-   two modules app.js reaches through a global — video.js and archetype-card.js.
+   three modules app.js reaches through a global — video.js, archetype-card.js
+   and share-card.js.
    No external requests of any kind — no CDN, no fonts, no analytics. The file
    must open from file:// with the network off. That promise is also printed
    in the footer, so it has to be literally true.
@@ -213,6 +214,7 @@ export function renderHTML(payload, opts) {
   const app = readFileSync(join(appDir, 'app.js'), 'utf8');
   const video = readFileSync(join(appDir, 'video.js'), 'utf8');
   const card = readFileSync(join(appDir, 'archetype-card.js'), 'utf8');
+  const share = readFileSync(join(appDir, 'share-card.js'), 'utf8');
 
   // Prefer the real art module; fall back to the bundled one so the renderer
   // is never blocked on it (and so `npx codepend` can't ship a blank page).
@@ -258,6 +260,12 @@ export function renderHTML(payload, opts) {
     "  videoSupported:  typeof videoSupported  !== 'undefined' ? videoSupported  : null,",
     "  pickCodec:       typeof pickCodec       !== 'undefined' ? pickCodec       : null,",
     "  videoFilename:   typeof videoFilename   !== 'undefined' ? videoFilename   : null,",
+    // The chart layer, handed over directly as well as through the exporter.
+    // share-card.js paints its figures with `CHART_API.paint`, and an exporter
+    // that failed to construct must not be able to take the charts down with
+    // it — a share card missing its clock is the exact regression this whole
+    // change exists to fix.
+    "  charts:          typeof CHART_API        !== 'undefined' ? CHART_API        : null,",
     '};',
     '})();',
     '',
@@ -279,6 +287,27 @@ export function renderHTML(payload, opts) {
     // The screen is a preview of the image and has to say the same words.
     "  EYEBROW:             typeof EYEBROW             !== 'undefined' ? EYEBROW             : null,",
     "  WORDMARK_SUB:        typeof WORDMARK_SUB        !== 'undefined' ? WORDMARK_SUB        : null,",
+    '};',
+    '})();',
+    '',
+    // The share card — the OTHER thirty-three memories. Same bridge, same
+    // ordering rule, and the same failure mode if it is forgotten: app.js reads
+    // `globalThis.CODEPEND_SHARE_CARD` once at the top level and keeps its old
+    // generic composition when the global is absent. Nothing throws; the page
+    // just quietly exports the wrong picture again. There is a test that fails
+    // if this block goes missing, and another that fails if it lands after
+    // app.js.
+    '/* ---- src/app/share-card.js (inlined) ---- */',
+    'globalThis.CODEPEND_SHARE_CARD = (() => {',
+    stripExports(share),
+    'return {',
+    "  drawShareCard:   typeof drawShareCard   !== 'undefined' ? drawShareCard   : null,",
+    "  shareLayout:     typeof shareLayout     !== 'undefined' ? shareLayout     : null,",
+    "  shareFilename:   typeof shareFilename   !== 'undefined' ? shareFilename   : null,",
+    "  safeText:        typeof safeText        !== 'undefined' ? safeText        : null,",
+    "  chartHasData:    typeof chartHasData    !== 'undefined' ? chartHasData    : null,",
+    "  SHARE_PRESETS:   typeof SHARE_PRESETS   !== 'undefined' ? SHARE_PRESETS   : null,",
+    "  SHARE_KINDS:     typeof SHARE_KINDS     !== 'undefined' ? SHARE_KINDS     : null,",
     '};',
     '})();',
     '',

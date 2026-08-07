@@ -1400,7 +1400,7 @@ const VIDEO_OK = !!(VIDEO_API && VIDEO_API.supported());
  * canvas, and the page's own SVG figures depend on it too. If it were ever
  * missing, charts would be absent rather than wrong.
  */
-const CHARTS = (VIDEO_API && VIDEO_API.charts) || null;
+const CHARTS = (VIDEO_API && VIDEO_API.charts) || (VIDEO && VIDEO.charts) || null;
 
 /** The page obeys prefers-reduced-motion. The exported file does not — it is
  *  an artefact that will be autoplayed by someone else's app, not UI. */
@@ -1639,7 +1639,23 @@ globalThis.codependVideo = {
 
 const SHEET = $('#share');
 const CANVAS = $('#scanvas');
-const PRESETS = { wide: [1200, 675], tall: [1080, 1350] };
+
+/**
+ * The card itself lives in share-card.js, inlined by render.js ahead of this
+ * file and handed over on a global — same bridge archetype-card.js uses, same
+ * reason (one module script, so two files cannot both hold top-level bindings).
+ *
+ * If it is ever absent the sheet still opens and still saves: `drawShare()`
+ * falls back to `drawShareLegacy()`, the generic composition this file shipped
+ * before. That fallback is a dead button avoided, not a design — it is the one
+ * that dropped the chart, so a page taking that path is a page with a missing
+ * module, and there is a test that fails if render.js stops inlining it.
+ */
+const SHARE_CARD = globalThis.CODEPEND_SHARE_CARD || null;
+const SHARE_OK = !!(SHARE_CARD && typeof SHARE_CARD.drawShareCard === 'function');
+
+const PRESETS = (SHARE_CARD && SHARE_CARD.SHARE_PRESETS)
+  || { wide: [1200, 675], tall: [1080, 1350] };
 const shareState = { memory: null, preset: 'wide', hideProject: false, opener: null };
 
 const F_DISPLAY = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
@@ -1655,7 +1671,24 @@ const F_SERIF = '"Iowan Old Style", Georgia, "Times New Roman", serif';
  */
 function openShare(m) {
   const mem = m || ARCHETYPE || MEMORIES[0];
-  if (mem && mem.isArchetype) { openMe(document.activeElement); return; }
+  // The ARCHETYPE goes to the #/me screen, not to this sheet: there is exactly
+  // one archetype image in this product and #/me draws it. That covers the
+  // synthesized archetype card and detect.js's `share-card`, which is the same
+  // subject under another name — its title IS the archetype and its stat line
+  // is the one #/me already sets.
+  //
+  // It does NOT cover `kind === 'award'` as a whole. `spirit-tool` is an award
+  // too and it is a bars chart of tool calls; sending that to the archetype
+  // screen would hand someone a picture of a different memory, which is a
+  // louder version of the bug this change exists to fix. share-card.js lays an
+  // award out and flags it `delegate`, and for those the sheet is right.
+  //
+  // `ARCHETYPE &&` because openMe() is a no-op without one, and a button that
+  // does nothing is worse than the sheet's own layout of the same card.
+  if (mem && ARCHETYPE && (mem.isArchetype || mem.type === 'share-card')) {
+    openMe(document.activeElement);
+    return;
+  }
   shareState.memory = mem;
   shareState.opener = document.activeElement;
   if (!SHEET.open) { try { SHEET.showModal(); } catch (e) { SHEET.setAttribute('open', ''); } }
@@ -1797,15 +1830,107 @@ function shareCopy(m, opts) {
 
 let drawSeq = 0;
 
+/**
+ * A memory, as share-card.js wants it.
+ *
+ * Two things are worth saying out loud. The chart is `normChart(m)` — the SAME
+ * normalised object the feed's SVG figure reads, out of the same cache — which
+ * is the only way the exported clock can be guaranteed to be the clock on the
+ * card. And `hideProject` is passed as a flag AND as a name list: the flag
+ * decides, the list is what a chart's labels are matched against, because a
+ * donut's arcs are labelled with project names that never appear in this
+ * memory's own `project` field.
+ */
+function shareSpec(m) {
+  const q = m.quote && m.quote.text ? m.quote : null;
+  return {
+    id: m.id,
+    type: m.type,
+    kind: m.kind,
+    eyebrow: m.eyebrow || '',
+    headline: m.title || '',
+    tagline: m.tagline || '',
+    body: m.body || '',
+    quote: q ? { text: trimQuote(q.text), who: q.who, project: q.project || '' } : null,
+    stat: m.stat || null,
+    chart: normChart(m),
+    seed: (m.seed || 0) >>> 0,
+    project: m.project || '',
+    agent: m.agent && AGENT_LABEL[m.agent] ? AGENT_LABEL[m.agent] : (m.agent || ''),
+    date: (q && typeof q.ts === 'number') ? q.ts : m.date,
+    theme: themeNow(),
+    hideProject: shareState.hideProject,
+    // Every project name in the album, not just this memory's own — a chart is
+    // labelled with all of them and the toggle has to reach the chart.
+    redactNames: PROJECT_NAMES,
+  };
+}
+
+const AGENT_LABEL = { claude: 'Claude Code', codex: 'Codex', cursor: 'Cursor' };
+
+/**
+ * Paint the preview canvas.
+ *
+ * The composition is share-card.js's; this function's whole job is to hand it a
+ * spec, the page's own art/palette/grain, and video.js's chart painter — then
+ * blit the result. It draws into a scratch canvas first so that two draws in
+ * flight (open the sheet, immediately flip the preset) cannot interleave on the
+ * one canvas the Download button reads from: only the newest is allowed to
+ * land, and it lands in a single `drawImage`.
+ */
 async function drawShare() {
   const m = shareState.memory;
   if (!m) return;
-  // Two draws can be in flight (open the sheet, immediately switch preset) and
-  // they share one canvas. Only the newest is allowed to paint.
   const mine = ++drawSeq;
   const stale = () => mine !== drawSeq;
-  const [W, H] = PRESETS[shareState.preset];
+  const [W, H] = PRESETS[shareState.preset] || PRESETS.wide;
   const R = 2;                                   // retina
+
+  CANVAS.style.aspectRatio = `${W} / ${H}`;
+  if (!SHARE_OK) { await drawShareLegacy(m, W, H, R, stale); return; }
+
+  const buf = document.createElement('canvas');
+  buf.width = W * R;
+  buf.height = H * R;
+  const bctx = buf.getContext('2d');
+  bctx.setTransform(R, 0, 0, R, 0, 0);
+
+  try {
+    await SHARE_CARD.drawShareCard(bctx, shareSpec(m), shareState.preset, {
+      artImage,
+      markImage,
+      palette: paletteOf,
+      grainPattern,
+      // The chart machinery, straight from video.js. Without it the card is
+      // composed with a hole where the clock goes — which is the bug.
+      paintChart: CHARTS ? CHARTS.paint : null,
+      normalizeChart: CHARTS ? CHARTS.normalize : null,
+      fonts: { display: F_DISPLAY, serif: F_SERIF },
+    });
+  } catch (e) {
+    // A card that throws is a dead Download button. Fall back rather than
+    // leave the user staring at whatever was on the canvas before.
+    await drawShareLegacy(m, W, H, R, stale);
+    return;
+  }
+  if (stale()) return;
+
+  CANVAS.width = W * R;
+  CANVAS.height = H * R;
+  const ctx = CANVAS.getContext('2d');
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, W * R, H * R);
+  ctx.drawImage(buf, 0, 0);
+}
+
+/**
+ * The composition this file shipped before share-card.js existed: full-bleed
+ * art, an eyebrow, one big number, the headline as a caption, a footer — and no
+ * chart, ever. Kept only so a page missing the module still has a working
+ * button. Nothing routine should reach it.
+ */
+async function drawShareLegacy(m, W, H, R, isStale) {
+  const stale = isStale || (() => false);
   CANVAS.width = W * R; CANVAS.height = H * R;
   CANVAS.style.aspectRatio = `${W} / ${H}`;
   const ctx = CANVAS.getContext('2d');
@@ -1977,9 +2102,41 @@ function markImage(px) {
 
 function shareFilename() {
   const m = shareState.memory || {};
+  if (SHARE_CARD && typeof SHARE_CARD.shareFilename === 'function') {
+    // `type` and not `id`: ids are built out of the memory's subject and a
+    // top-project id would put a project name in a filename the toggle never
+    // sees. The type is a slug the detectors chose ("peak-day", "night-owl").
+    try { return SHARE_CARD.shareFilename({ type: m.type }, shareState.preset); } catch (e) { /* below */ }
+  }
   const slug = String(m.type || 'memory').replace(/[^a-z0-9-]/gi, '-').toLowerCase();
   return `codepend-${slug}-${shareState.preset}.png`;
 }
+
+/* The share sheet, drivable from a console or a test harness without clicking
+   through thirty cards. Read-only — `layout` is the pure geometry the card is
+   painted from, so an audit can sweep every memory, both frames and both
+   settings of the toggle and read the exact strings that will be drawn. Nothing
+   here paints, and nothing here uploads. */
+globalThis.codependShare = {
+  presets: () => Object.assign({}, PRESETS),
+  ids: () => Array.from(BY_ID.keys()),
+  spec: (id, hideProject) => {
+    const m = BY_ID.get(id);
+    if (!m) return null;
+    const was = shareState.hideProject;
+    if (hideProject != null) shareState.hideProject = !!hideProject;
+    try { return shareSpec(m); } finally { shareState.hideProject = was; }
+  },
+  layout: (id, preset, hideProject) => {
+    const spec = globalThis.codependShare.spec(id, hideProject);
+    if (!spec || !SHARE_CARD || typeof SHARE_CARD.shareLayout !== 'function') return null;
+    return SHARE_CARD.shareLayout(spec, PRESETS[preset] ? preset : 'wide');
+  },
+  filename: () => shareFilename(),
+  get state() {
+    return { preset: shareState.preset, hideProject: shareState.hideProject, id: shareState.memory ? shareState.memory.id : null };
+  },
+};
 
 function wireShare() {
   $('.js-sclose').addEventListener('click', closeShare);
