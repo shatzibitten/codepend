@@ -19,7 +19,7 @@
  * elsewhere and are not touched.
  */
 
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -27,6 +27,7 @@ import { renderHTML } from '../src/render.js';
 import { payload } from '../test/fixture-payload.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const PACKAGE_VERSION = JSON.parse(readFileSync(resolve(ROOT, 'package.json'), 'utf8')).version;
 
 /* ─────────────────────────────── options ─────────────────────────────── */
 
@@ -214,10 +215,14 @@ function must(html, needle, replacement, what) {
  */
 export function buildDemoHTML(opts = {}) {
   const baseUrl = String(opts.baseUrl || DEFAULT_BASE_URL).replace(/\/+$/, '');
+  const demoPayload = {
+    ...payload,
+    meta: { ...(payload.meta || {}), version: PACKAGE_VERSION },
+  };
 
-  let html = renderHTML(payload, {
+  let html = renderHTML(demoPayload, {
     title: TITLE,
-    version: '0.1.0',
+    version: PACKAGE_VERSION,
     redact: 'safe',
     // Pinned so two builds of the same commit are byte-identical; Pages redeploys
     // otherwise churn the artifact for no reason.
@@ -255,6 +260,7 @@ function audit(html) {
   if (!/class="demo-tag"/.test(html)) fail.push('the sticky demo tag is missing');
   if (!/property="og:image"/.test(html)) fail.push('og:image is missing');
   if (!/name="twitter:card" content="summary_large_image"/.test(html)) fail.push('twitter:card is missing');
+  if (!html.includes(`"version":"${PACKAGE_VERSION}"`)) fail.push('the package version is missing');
   // The offline promise, re-checked on the artifact itself rather than on the sources.
   // `rel="canonical"` is metadata and is never fetched, so only the rels that actually
   // pull bytes are disqualifying — the rest of the page must load nothing at all.
