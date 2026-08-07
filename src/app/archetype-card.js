@@ -74,15 +74,21 @@ export const DEFAULT_PRESET = 'square';
  * gym, a language app. Spotify Wrapped can open on a name because the brand
  * carries the category; `codepend` carries nothing yet, so the card has to say
  * what it is about.
+ *
+ * "coding agent", not "coding": the logs are of sessions with an agent, and all
+ * twelve archetypes are about how someone treats it — interrupting, thanking,
+ * delegating, staying up with it. None of them are about code. "Agent" alone
+ * would lose the domain (an insurance agent keeps logs too); the compound
+ * carries both, and it is the phrase the README already opens with.
  */
-export const EYEBROW = 'WHAT YOUR AI CODING LOGS SAY YOU ARE';
+export const EYEBROW = 'WHAT YOUR CODING AGENT LOGS SAY YOU ARE';
 export const WORDMARK = 'codepend';
 /**
  * Sits after the wordmark when the frame is wide enough to hold it. A bare
  * `codepend` is a word nobody has heard yet; this is the one line that turns it
  * into a thing somebody might go and get.
  */
-export const WORDMARK_SUB = 'your AI coding history, as a photo album';
+export const WORDMARK_SUB = 'the diary your coding agent keeps about you';
 export const CTA = 'npx codepend';
 
 /** WCAG AA for large text is 3:1. We hold the card to body-text AA anyway. */
@@ -487,6 +493,24 @@ export function wrapLines(text, o, maxW, maxLines, measure) {
   if (line) lines.push(line);
   const dropped = i < words.length;
   if (dropped && lines.length) {
+    // Prefer ending on a full stop over trailing off mid-word. "…steady,
+    // unglamorous, actual work. Th…" reads as a rendering bug on a card
+    // somebody is about to post; "…actual work." reads as an edit. Only take
+    // the sentence break if it leaves most of the text — otherwise the ellipsis
+    // is the honest signal that there was more.
+    const whole = lines.join(' ');
+    const stop = Math.max(whole.lastIndexOf('. '), whole.lastIndexOf('! '), whole.lastIndexOf('? '));
+    if (stop > whole.length * 0.55) {
+      const kept = whole.slice(0, stop + 1);
+      const rewrapped = [];
+      let ln = '';
+      for (const w of kept.split(/\s+/)) {
+        const t2 = ln ? ln + ' ' + w : w;
+        if (ln && measure(t2, o) > maxW) { rewrapped.push(ln); ln = w; } else ln = t2;
+      }
+      if (ln) rewrapped.push(ln);
+      if (rewrapped.length <= maxLines) return rewrapped.map((l) => ellipsize(l, o, maxW, measure));
+    }
     const last = lines[lines.length - 1];
     lines[lines.length - 1] = ellipsize(last.replace(/[.,;:]?$/, '') + '…', o, maxW, measure);
   }
