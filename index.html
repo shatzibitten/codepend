@@ -7,6 +7,19 @@
 <meta name="robots" content="index, follow">
 <meta name="description" content="A live demo. codepend reads your local Claude Code, Codex and Cursor session logs and builds a Google-Photos-style memory feed: on this day, your stats, your archetype. Runs on your machine, uploads nothing, zero dependencies. npx codepend">
 <title>codepend — your AI coding history, as a photo album</title>
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="codepend">
+<meta property="og:title" content="The Midnight Interrogator">
+<meta property="og:description" content="The best questions arrive after midnight. So do you. 67 days, 1747 messages, with Codex and Claude Code. Read out of my own agent logs, on my own machine. Run npx codepend on yours.">
+<meta property="og:image" content="https://shatzibitten.github.io/codepend/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="codepend — your AI coding history, as a photo album">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="The Midnight Interrogator">
+<meta name="twitter:description" content="The best questions arrive after midnight. So do you. 67 days, 1747 messages, with Codex and Claude Code. Read out of my own agent logs, on my own machine. Run npx codepend on yours.">
+<meta name="twitter:image" content="https://shatzibitten.github.io/codepend/og.png">
+<!-- title: codepend — your AI coding history, as a photo album -->
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 33 33'%3E%3Crect width='33' height='33' rx='7' fill='%2306070A'/%3E%3Crect x='1' y='1' width='8' height='8' rx='2' fill='%2359AAF8' opacity='1'/%3E%3Crect x='13' y='1' width='8' height='8' rx='2' fill='%2359AAF8' opacity='1'/%3E%3Crect x='25' y='1' width='8' height='8' rx='2' fill='%2359AAF8' opacity='1'/%3E%3Crect x='1' y='13' width='8' height='8' rx='2' fill='%2359AAF8' opacity='1'/%3E%3Crect x='13' y='13' width='8' height='8' rx='2' fill='%2359AAF8' opacity='1'/%3E%3Crect x='25' y='13' width='8' height='8' rx='2' fill='%2359AAF8' opacity='1'/%3E%3Crect x='1' y='25' width='8' height='8' rx='2' fill='%2359AAF8' opacity='1'/%3E%3Crect x='13' y='25' width='8' height='8' rx='2' fill='%2359AAF8' opacity='1'/%3E%3Crect x='25' y='25' width='8' height='8' rx='2' fill='%23F4F1EC' opacity='0.22'/%3E%3C/svg%3E">
 <script>(function(){try{var t=localStorage.getItem('codepend.theme');
 if(t!=='light'&&t!=='dark'){t=window.matchMedia&&window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';}
@@ -200,7 +213,11 @@ html { scroll-behavior: smooth; }
 .btn--icon { width: 34px; padding: 0; background: transparent; font-size: 15px; }
 .btn--icon:hover { background: var(--surface-2); }
 .btn--solid { background: var(--ink-0); color: var(--ink-inv); }
-.btn--solid:hover { background: var(--ink-0); filter: brightness(1.06); }
+/* `.btn:hover` sets `color: var(--ink-0)` at (0,2,0) and out-specifies
+   `.btn--solid`'s (0,1,0) ink-inv — so every solid button turned ink-on-ink and
+   vanished under the cursor. Download PNG, Save the video and Save archetype
+   were all blank white pills on hover. */
+.btn--solid:hover { background: var(--ink-0); color: var(--ink-inv); filter: brightness(1.06); }
 .btn__ic { font-size: 9px; opacity: .8; }
 @media (max-width: 400px) { .btn__t { display: none; } .btn--ghost { padding: 0 12px; } }
 
@@ -852,7 +869,9 @@ html { scroll-behavior: smooth; }
    travels, and a screenshot is not. It was a one-word button in the middle of a
    row of three, which is not how you label the main action. */
 .dock__b--hero { background: var(--ink-0); color: var(--paper); font-weight: 650; }
-.dock__b--hero:hover { filter: brightness(.94); }
+/* Same specificity trap as .btn--solid: `.dock__b:hover` overrides the hero's
+   own background, so the primary dock button lost its fill under the cursor. */
+.dock__b--hero:hover { background: var(--ink-0); filter: brightness(.94); }
 
 /* The story's tap zones sit at z-index 3 and cover the whole stage; the slide
    body sits at 1. So every button on the finale — Save video, Share card,
@@ -872,6 +891,156 @@ html { scroll-behavior: smooth; }
 .wslide__cta,
 .wslide a,
 .wslide button { pointer-events: auto; }
+
+/* ── 9. #/me — the archetype, full screen ─────────────────────────────────
+
+   The archetype used to be card six of thirty, and its image came out of the
+   same share sheet that has to serve quotes, stats and charts. It is the one
+   thing people post, so it gets its own screen and its own verb: one enormous
+   name, one line, the numbers, and a button that says exactly what it does.
+   ------------------------------------------------------------------------ */
+
+.me {
+  position: fixed; inset: 0; z-index: 90;
+  width: 100vw; max-width: 100vw; height: 100dvh; max-height: 100dvh;
+  margin: 0; padding: 0; border: 0; overflow: hidden;
+  background: var(--a-bg); color: var(--ink-0);
+}
+.me::backdrop { background: #000; }
+.me__art { position: absolute; inset: 0; z-index: 0; }
+.me__art svg { width: 100%; height: 100%; display: block; }
+
+/* One vertical scrim, the same shape the exported card paints — the screen and
+   the file must not disagree about what the artwork looks like behind type. */
+.me__scrim {
+  position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  background: linear-gradient(to bottom,
+    rgb(var(--scrim-color) / .58) 0%,
+    rgb(var(--scrim-color) / .14) 24%,
+    rgb(var(--scrim-color) / .70) 58%,
+    rgb(var(--scrim-color) / .95) 100%);
+}
+
+.me__x {
+  position: absolute; z-index: 3; top: calc(var(--safe-t) + 12px); right: 12px;
+  width: 40px; height: 40px; border-radius: 50%;
+  display: grid; place-items: center;
+  color: var(--ink-0); background: rgb(var(--scrim-color) / .5);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  font-size: 15px; opacity: .78;
+  transition: opacity var(--t-fast) var(--e-out), transform 90ms var(--e-snap);
+}
+.me__x:hover { opacity: 1; }
+.me__x:active { transform: scale(.94); }
+
+.me__scroll {
+  position: relative; z-index: 2; height: 100%;
+  overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
+}
+.me__in {
+  box-sizing: border-box; min-height: 100dvh;
+  display: flex; flex-direction: column; justify-content: flex-end;
+  max-width: 620px; margin-inline: auto;
+  padding: calc(var(--safe-t) + 78px) var(--pad) calc(var(--safe-b) + 30px);
+}
+
+.me__eyebrow { color: var(--ink-0); opacity: .58; }
+.me__name {
+  margin-top: 12px;
+  font: 800 clamp(42px, 12.6vw, 92px)/0.96 var(--f-display);
+  letter-spacing: -.042em; color: var(--ink-0); text-wrap: balance;
+}
+.me__tagline {
+  margin-top: 18px; max-width: 22ch;
+  font: italic 400 clamp(19px, 5.2vw, 26px)/1.28 var(--f-quote);
+  color: var(--ink-0); opacity: .9;
+}
+.me__blurb {
+  margin-top: 16px; max-width: 42ch;
+  font-size: var(--t-body); line-height: 1.55; color: var(--ink-0); opacity: .76;
+}
+
+.me__stats {
+  margin-top: 26px; padding-top: 18px; border-top: 1px solid var(--hairline);
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(70px, 1fr)); gap: 16px 10px;
+}
+.me__cell { display: grid; gap: 4px; }
+.me__cell b {
+  font: 800 clamp(21px, 6vw, 30px)/1 var(--f-display);
+  letter-spacing: -.03em; color: var(--ink-0); font-variant-numeric: tabular-nums;
+}
+.me__cell span {
+  font: 600 var(--t-micro)/1 var(--f-text); letter-spacing: .1em;
+  text-transform: uppercase; color: var(--ink-0); opacity: .55;
+}
+
+.me__act { margin-top: 30px; display: grid; gap: 12px; }
+/* The one button this screen exists for. */
+.me__save {
+  width: 100%; min-height: 60px; border-radius: 18px;
+  font: 700 17px/1 var(--f-display); letter-spacing: -.012em; gap: 10px;
+  box-shadow: 0 14px 44px rgb(0 0 0 / .34);
+}
+.me__save-ic { font-size: 15px; opacity: .7; }
+a.btn, .card__cta { text-decoration: none; cursor: pointer; }
+.me__save[aria-disabled="true"] { opacity: .55; }
+.me__save[aria-disabled="true"]:active { transform: none; }
+.me__fmt { display: flex; gap: 8px; }
+.me__fmt .seg {
+  display: grid; align-content: center; gap: 3px;
+  min-height: 46px; padding: 6px 4px; line-height: 1.1;
+}
+.me__fmt .seg i {
+  font: 600 10px/1 var(--f-text); font-style: normal;
+  opacity: .62; font-variant-numeric: tabular-nums;
+}
+.me__note { color: var(--ink-0); opacity: .62; font-size: 12px; line-height: 1.5; }
+
+/* Handed over, not silently downloaded: the thumbnail is the proof the PNG
+   exists, and the button above it is a real <a download> the person clicks. */
+.me__proof { display: flex; align-items: center; gap: 14px; }
+.me__proofcol { flex: 1 1 auto; display: grid; gap: 10px; justify-items: start; }
+.me__prev {
+  flex: 0 0 auto; width: 74px; max-height: 132px; height: auto;
+  border-radius: 10px; display: block; background: var(--surface-2);
+  box-shadow: 0 10px 30px rgb(0 0 0 / .42), inset 0 0 0 1px var(--hairline);
+}
+.me__prev[hidden] { display: none; }
+
+.me__more { margin-top: 24px; display: flex; gap: 8px; flex-wrap: wrap; }
+.me__foot { margin-top: 18px; color: var(--ink-0); opacity: .45; font-size: 11px; }
+.me__foot code { font: 600 11px/1 var(--f-mono); }
+
+@media (min-width: 760px) {
+  .me__in { max-width: 700px; justify-content: center; padding-block: 8vh calc(var(--safe-b) + 8vh); }
+  .me__name { font-size: clamp(64px, 7.6vw, 108px); }
+  .me__act { max-width: 420px; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .me[open] .me__in > * { animation: mein 620ms var(--e-out) backwards; }
+  .me[open] .me__eyebrow { animation-delay: 40ms; }
+  .me[open] .me__name    { animation-delay: 90ms; }
+  .me[open] .me__tagline { animation-delay: 170ms; }
+  .me[open] .me__blurb   { animation-delay: 230ms; }
+  .me[open] .me__stats   { animation-delay: 290ms; }
+  .me[open] .me__act     { animation-delay: 350ms; }
+  @keyframes mein { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+}
+
+/* The way into the screen from the feed. The archetype card no longer carries
+   the generic ⇪ — there is exactly one path to an archetype image. */
+.card__cta {
+  align-self: flex-start; margin-top: 18px;
+  display: inline-flex; align-items: center; gap: 8px;
+  min-height: 40px; padding: 0 16px; border-radius: var(--r-chip);
+  background: var(--ink-0); color: var(--ink-inv);
+  font: 700 var(--t-meta)/1 var(--f-text); letter-spacing: .01em;
+  transition: filter var(--t-fast) var(--e-out), transform 90ms var(--e-snap);
+}
+.card__cta:hover { filter: brightness(1.06); }
+.card__cta:active { transform: scale(.97); }
+.card__cta span { font-size: 11px; opacity: .7; }
 </style>
 <!-- link preview -->
 <meta property="og:type" content="website">
@@ -1006,7 +1175,7 @@ html { scroll-behavior: smooth; }
   <span class="dock__sep" aria-hidden="true"></span>
   <button class="dock__b dock__b--hero js-dockvideo" type="button" hidden><span aria-hidden="true">⬤</span> Save video</button>
   <span class="dock__sep js-dockvideo-sep" aria-hidden="true" hidden></span>
-  <button class="dock__b js-share" type="button"><span aria-hidden="true">⇪</span> Share</button>
+  <button class="dock__b js-me" type="button"><span aria-hidden="true">◆</span> Archetype</button>
 </div>
 
 <dialog class="wrapped" id="wrapped" aria-label="codepend Wrapped">
@@ -1017,6 +1186,50 @@ html { scroll-behavior: smooth; }
     <button class="wrapped__zone wrapped__zone--l js-wprev" type="button" aria-label="Previous slide"></button>
     <button class="wrapped__zone wrapped__zone--r js-wnext" type="button" aria-label="Next slide"></button>
     <div class="wrapped__foot"><span class="wrapped__hint" id="whint"></span></div>
+  </div>
+</dialog>
+
+<!-- The archetype's own screen. Routed at #/me: it is the payoff of the page,
+     not a card in the feed, so it gets the whole viewport and one obvious verb. -->
+<dialog class="me" id="me" aria-labelledby="mename">
+  <div class="me__art" id="meart" aria-hidden="true"></div>
+  <div class="me__scrim" aria-hidden="true"></div>
+  <button class="me__x js-meclose" type="button" aria-label="Close and go back to the album">✕</button>
+  <div class="me__scroll">
+    <div class="me__in">
+      <p class="eyebrow me__eyebrow">what you are</p>
+      <h1 class="me__name" id="mename"></h1>
+      <p class="me__tagline" id="metag" hidden></p>
+      <p class="me__blurb" id="meblurb" hidden></p>
+      <div class="me__stats" id="mestats"></div>
+
+      <div class="me__act">
+        <div class="me__fmt" role="group" aria-label="Image size">
+          <button class="seg is-on" data-mepreset="square" type="button">Square<i>1080 × 1080</i></button>
+          <button class="seg" data-mepreset="story" type="button">Story<i>1080 × 1920</i></button>
+          <button class="seg" data-mepreset="wide" type="button">Wide<i>1200 × 675</i></button>
+        </div>
+        <!-- A real <a download>, with the file already drawn and attached before
+             the person reaches for it. One click, their own gesture, no promise
+             made before the browser has actually been asked. -->
+        <a class="btn btn--solid me__save" id="mesave" download aria-disabled="true">
+          <span class="me__save-ic" aria-hidden="true">⤓</span> <span id="mesavet">Save archetype</span>
+        </a>
+        <div class="me__proof">
+          <img class="me__prev" id="meprev" alt="Preview of the image you are about to save" hidden>
+          <div class="me__proofcol">
+            <p class="me__note" id="menote" role="status" aria-live="polite">Drawing your card…</p>
+            <button class="btn js-mecopy" type="button">Copy image</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="me__more">
+        <button class="btn btn--ghost js-mewrapped" type="button"><span class="btn__ic" aria-hidden="true">▶</span> Play Wrapped</button>
+        <button class="btn btn--ghost js-meclose" type="button">Back to the album</button>
+      </div>
+      <p class="me__foot"><code>npx codepend</code> · computed on your machine</p>
+    </div>
   </div>
 </dialog>
 
@@ -1051,7 +1264,7 @@ html { scroll-behavior: smooth; }
     <p><code>npx codepend</code></p></div>
 </noscript>
 
-<script type="application/json" id="codepend-data">{"profile":{"archetype":{"name":"The Midnight Interrogator","tagline":"The best questions arrive after midnight. So do you.","blurb":"18% of your conversations start after the day is officially over. The latest was 04:41. You’re not avoiding sleep. You’re just not finished.","seed":3242911003},"firstSeen":1770433920000,"lastSeen":1785973200000,"activeDays":67,"totalSessions":239,"totalHours":412,"topProject":"orchard","topModel":"gpt-5.6-sol","spiritTool":"exec"},"memories":[{"seed":3401393018,"date":1770442860000,"body":"61 messages, 4h 12m. You ended at 03:47. This is what you were saying:","stat":null,"quote":{"text":"давай ещё раз, но без анимации","who":"you","ts":1770371220000,"project":"orchard"},"chart":null,"agent":"codex","project":"orchard","tags":["anniversary"],"shareable":true,"id":"on-this-day:2026-02-06","type":"on-this-day","kind":"onthisday","weight":98,"eyebrow":"SIX MONTHS AGO","title":"You were deep in orchard."},{"seed":1931160607,"date":1770433920000,"body":"February 6, 2026, 21:12. It answered in four seconds and you have been talking ever since.","stat":null,"quote":{"text":"hey can you look at this repo and tell me what it does","who":"you","ts":1770433920000,"project":"orchard"},"chart":null,"agent":"codex","project":"orchard","tags":[],"shareable":true,"id":"first-words:origin","type":"first-words","kind":"quote","weight":92,"eyebrow":"THE FIRST THING YOU EVER SAID","title":"Your opening line."},{"seed":1467214639,"date":null,"body":"For every sentence you typed, it did sixteen things. You have never once watched it all happen.","stat":{"value":"16","unit":"×","label":"actions per sentence"},"quote":null,"chart":null,"agent":"both","project":null,"tags":["numbers"],"shareable":true,"id":"the-ratio:all","type":"the-ratio","kind":"stat","weight":90,"eyebrow":"THE RATIO","title":"1 747 messages from you. 27 812 tool calls back."},{"seed":1987476889,"date":null,"body":"Peak at 17:00. Second peak at 23:00. There is no version of your day where it isn’t around.","stat":null,"quote":null,"chart":{"type":"clock","data":{"bins":[31,44,52,38,12,4,9,27,88,169,141,152,170,133,118,126,148,179,120,96,84,102,118,125]},"note":"local time · 24 bins"},"agent":"both","project":null,"tags":[],"shareable":true,"id":"deep-work-clock:all","type":"deep-work-clock","kind":"chart","weight":86,"eyebrow":"WHEN YOU TALK TO IT","title":"You've used every hour on this clock except 05:00."},{"seed":3040591309,"date":1782727920000,"body":"It started at 19:01 and it ended at 04:12. Nobody asked either of you to do that.","stat":{"value":"9h 11m","unit":null,"label":"without getting up"},"quote":null,"chart":null,"agent":"codex","project":"orchard-v2","tags":[],"shareable":true,"id":"the-marathon:s-4471","type":"the-marathon","kind":"stat","weight":84,"eyebrow":"THE LONGEST SITTING","title":"Nine hours and eleven minutes, one session."},{"seed":3129867543,"date":null,"body":"6.8 billion of them, over six months. War and Peace, 8 700 times over. Estimate, at list price.","stat":{"value":"$3 450","unit":null,"label":"estimated, at list price"},"quote":null,"chart":null,"agent":"both","project":null,"tags":["numbers"],"shareable":true,"id":"the-bill:all","type":"the-bill","kind":"stat","weight":83,"eyebrow":"THE BILL","title":"About $3 450 of tokens."},{"seed":35635519,"date":null,"body":"Two words. No punctuation. It has never once asked you to be more specific.","stat":null,"quote":{"text":"коммит и пуш","who":"you","ts":1785729840000,"project":"orchard"},"chart":null,"agent":"codex","project":"orchard","tags":["funny"],"shareable":true,"id":"catchphrase-yours:kommit","type":"catchphrase-yours","kind":"quote","weight":82,"eyebrow":"YOUR CATCHPHRASE","title":"You have said this 141 times."},{"seed":1909380316,"date":null,"body":"Longest streak 12 days. Longest gap 9. The empty squares are also you.","stat":null,"quote":null,"chart":{"type":"heat","data":{"days":[{"date":"2026-02-06","value":0},{"date":"2026-02-07","value":0},{"date":"2026-02-08","value":0},{"date":"2026-02-09","value":0},{"date":"2026-02-10","value":0},{"date":"2026-02-11","value":0},{"date":"2026-02-12","value":7},{"date":"2026-02-13","value":32},{"date":"2026-02-14","value":0},{"date":"2026-02-15","value":0},{"date":"2026-02-16","value":3},{"date":"2026-02-17","value":0},{"date":"2026-02-18","value":0},{"date":"2026-02-19","value":10},{"date":"2026-02-20","value":0},{"date":"2026-02-21","value":0},{"date":"2026-02-22","value":0},{"date":"2026-02-23","value":0},{"date":"2026-02-24","value":0},{"date":"2026-02-25","value":0},{"date":"2026-02-26","value":0},{"date":"2026-02-27","value":31},{"date":"2026-02-28","value":0},{"date":"2026-03-01","value":0},{"date":"2026-03-02","value":0},{"date":"2026-03-03","value":0},{"date":"2026-03-04","value":0},{"date":"2026-03-05","value":18},{"date":"2026-03-06","value":0},{"date":"2026-03-07","value":0},{"date":"2026-03-08","value":0},{"date":"2026-03-09","value":0},{"date":"2026-03-10","value":16},{"date":"2026-03-11","value":15},{"date":"2026-03-12","value":0},{"date":"2026-03-13","value":0},{"date":"2026-03-14","value":0},{"date":"2026-03-15","value":27},{"date":"2026-03-16","value":0},{"date":"2026-03-17","value":0},{"date":"2026-03-18","value":0},{"date":"2026-03-19","value":0},{"date":"2026-03-20","value":0},{"date":"2026-03-21","value":0},{"date":"2026-03-22","value":33},{"date":"2026-03-23","value":34},{"date":"2026-03-24","value":0},{"date":"2026-03-25","value":28},{"date":"2026-03-26","value":29},{"date":"2026-03-27","value":0},{"date":"2026-03-28","value":39},{"date":"2026-03-29","value":0},{"date":"2026-03-30","value":34},{"date":"2026-03-31","value":0},{"date":"2026-04-01","value":0},{"date":"2026-04-02","value":12},{"date":"2026-04-03","value":11},{"date":"2026-04-04","value":0},{"date":"2026-04-05","value":17},{"date":"2026-04-06","value":40},{"date":"2026-04-07","value":0},{"date":"2026-04-08","value":6},{"date":"2026-04-09","value":0},{"date":"2026-04-10","value":0},{"date":"2026-04-11","value":0},{"date":"2026-04-12","value":0},{"date":"2026-04-13","value":14},{"date":"2026-04-14","value":31},{"date":"2026-04-15","value":0},{"date":"2026-04-16","value":0},{"date":"2026-04-17","value":0},{"date":"2026-04-18","value":0},{"date":"2026-04-19","value":12},{"date":"2026-04-20","value":36},{"date":"2026-04-21","value":0},{"date":"2026-04-22","value":0},{"date":"2026-04-23","value":13},{"date":"2026-04-24","value":0},{"date":"2026-04-25","value":0},{"date":"2026-04-26","value":18},{"date":"2026-04-27","value":0},{"date":"2026-04-28","value":0},{"date":"2026-04-29","value":0},{"date":"2026-04-30","value":17},{"date":"2026-05-01","value":16},{"date":"2026-05-02","value":9},{"date":"2026-05-03","value":0},{"date":"2026-05-04","value":27},{"date":"2026-05-05","value":0},{"date":"2026-05-06","value":0},{"date":"2026-05-07","value":0},{"date":"2026-05-08","value":0},{"date":"2026-05-09","value":0},{"date":"2026-05-10","value":18},{"date":"2026-05-11","value":0},{"date":"2026-05-12","value":0},{"date":"2026-05-13","value":0},{"date":"2026-05-14","value":38},{"date":"2026-05-15","value":37},{"date":"2026-05-16","value":0},{"date":"2026-05-17","value":0},{"date":"2026-05-18","value":0},{"date":"2026-05-19","value":33},{"date":"2026-05-20","value":0},{"date":"2026-05-21","value":0},{"date":"2026-05-22","value":0},{"date":"2026-05-23","value":28},{"date":"2026-05-24","value":33},{"date":"2026-05-25","value":34},{"date":"2026-05-26","value":0},{"date":"2026-05-27","value":0},{"date":"2026-05-28","value":0},{"date":"2026-05-29","value":30},{"date":"2026-05-30","value":0},{"date":"2026-05-31","value":31},{"date":"2026-06-01","value":0},{"date":"2026-06-02","value":0},{"date":"2026-06-03","value":0},{"date":"2026-06-04","value":0},{"date":"2026-06-05","value":11},{"date":"2026-06-06","value":0},{"date":"2026-06-07","value":0},{"date":"2026-06-08","value":0},{"date":"2026-06-09","value":0},{"date":"2026-06-10","value":37},{"date":"2026-06-11","value":22},{"date":"2026-06-12","value":0},{"date":"2026-06-13","value":0},{"date":"2026-06-14","value":0},{"date":"2026-06-15","value":42},{"date":"2026-06-16","value":0},{"date":"2026-06-17","value":0},{"date":"2026-06-18","value":0},{"date":"2026-06-19","value":0},{"date":"2026-06-20","value":0},{"date":"2026-06-21","value":0},{"date":"2026-06-22","value":0},{"date":"2026-06-23","value":0},{"date":"2026-06-24","value":30},{"date":"2026-06-25","value":5},{"date":"2026-06-26","value":0},{"date":"2026-06-27","value":0},{"date":"2026-06-28","value":0},{"date":"2026-06-29","value":9},{"date":"2026-06-30","value":0},{"date":"2026-07-01","value":0},{"date":"2026-07-02","value":7},{"date":"2026-07-03","value":8},{"date":"2026-07-04","value":0},{"date":"2026-07-05","value":0},{"date":"2026-07-06","value":27},{"date":"2026-07-07","value":0},{"date":"2026-07-08","value":0},{"date":"2026-07-09","value":10},{"date":"2026-07-10","value":0},{"date":"2026-07-11","value":0},{"date":"2026-07-12","value":0},{"date":"2026-07-13","value":0},{"date":"2026-07-14","value":24},{"date":"2026-07-15","value":7},{"date":"2026-07-16","value":0},{"date":"2026-07-17","value":0},{"date":"2026-07-18","value":36},{"date":"2026-07-19","value":0},{"date":"2026-07-20","value":0},{"date":"2026-07-21","value":20},{"date":"2026-07-22","value":37},{"date":"2026-07-23","value":0},{"date":"2026-07-24","value":0},{"date":"2026-07-25","value":40},{"date":"2026-07-26","value":25},{"date":"2026-07-27","value":42},{"date":"2026-07-28","value":19},{"date":"2026-07-29","value":36},{"date":"2026-07-30","value":22},{"date":"2026-07-31","value":29},{"date":"2026-08-01","value":41},{"date":"2026-08-02","value":16},{"date":"2026-08-03","value":15},{"date":"2026-08-04","value":38},{"date":"2026-08-05","value":21}]}},"agent":"both","project":null,"tags":[],"shareable":true,"id":"the-heatmap:180","type":"the-heatmap","kind":"chart","weight":80,"eyebrow":"67 DAYS LIT","title":"67 days lit out of 181."},{"seed":4178568829,"date":null,"body":"Median: eleven seconds in. You knew where it was going and you did not want to watch it get there.","stat":{"value":"122","unit":null,"label":"interruptions"},"quote":null,"chart":null,"agent":"codex","project":null,"tags":["funny"],"shareable":true,"id":"the-interruption:all","type":"the-interruption","kind":"stat","weight":79,"eyebrow":"ESC","title":"You stopped it mid-sentence 122 times."},{"seed":62569385,"date":null,"body":"5 projects in total. Two of them you visited exactly once.","stat":null,"quote":null,"chart":{"type":"donut","data":{"segments":[{"label":"orchard","value":4120},{"label":"orchard-v2","value":2380},{"label":"workspace","value":1210},{"label":"beacon","value":640},{"label":"kiln","value":210},{"label":"codepend","value":90}]},"note":"minutes per project"},"agent":"both","project":null,"tags":[],"shareable":true,"id":"project-constellation:all","type":"project-constellation","kind":"chart","weight":78,"eyebrow":"WHERE IT ALL WENT","title":"orchard took 46% of everything."},{"seed":1555942166,"date":1785319920000,"body":"The last thing either of you said that night was this. It was a Wednesday.","stat":null,"quote":{"text":"ok that works. good night","who":"you","ts":1785319920000,"project":"orchard"},"chart":null,"agent":"codex","project":"orchard","tags":[],"shareable":true,"id":"the-long-night:2026-07-29","type":"the-long-night","kind":"onthisday","weight":77,"eyebrow":"A WEEK AGO TONIGHT","title":"At 04:12 you were still going."},{"seed":2046410640,"date":null,"body":"Four times more than anything else it does. Your relationship is mostly it running things and telling you what happened.","stat":{"value":"21 910","unit":null,"label":"exec calls"},"quote":null,"chart":null,"agent":"codex","project":null,"tags":["numbers"],"shareable":true,"id":"spirit-tool:exec","type":"spirit-tool","kind":"stat","weight":75,"eyebrow":"YOUR SPIRIT TOOL","title":"exec, 21 910 times."},{"seed":1559752728,"date":null,"body":"You switched on June 14 and never switched back. It took two days.","stat":null,"quote":null,"chart":{"type":"bars","data":{"rows":[{"label":"gpt-5.6-sol","value":1106},{"label":"claude-fable-5","value":3155},{"label":"claude-opus-5","value":1359},{"label":"claude-opus-4-8","value":899},{"label":"gpt-5.5","value":103},{"label":"gpt-5.6-luna","value":69}]},"note":"assistant messages per model"},"agent":"both","project":null,"tags":[],"shareable":true,"id":"model-loyalty:all","type":"model-loyalty","kind":"chart","weight":74,"eyebrow":"WHO YOU TALKED TO","title":"gpt-5.6-sol did most of the talking."},{"seed":3963659219,"date":1785348000000,"body":"7 hours, 4 sessions, 2 projects. Whatever was going on that day, it was going on all day.","stat":{"value":"154","unit":null,"label":"messages in one day"},"quote":null,"chart":null,"agent":"both","project":"orchard","tags":[],"shareable":true,"id":"peak-day:2026-07-29","type":"peak-day","kind":"stat","weight":73,"eyebrow":"YOUR BIGGEST DAY","title":"July 29: 154 messages."},{"seed":545366072,"date":1774646400000,"body":"9 messages on March 27. That’s the whole story. You had a plan that morning.","stat":null,"quote":{"text":"the nozzle needs to heat evenly, try a pid loop","who":"you","ts":1774646400000,"project":"kiln"},"chart":null,"agent":"codex","project":"kiln","tags":[],"shareable":true,"id":"ghost-project:kiln","type":"ghost-project","kind":"onthisday","weight":72,"eyebrow":"THE ONE YOU LEFT","title":"Whatever happened to kiln?"},{"seed":3519722052,"date":null,"body":"To a program. It cannot tell. Don’t let anyone talk you out of it.","stat":{"value":"61","unit":null,"label":"thank-yous"},"quote":null,"chart":null,"agent":"both","project":null,"tags":["funny"],"shareable":true,"id":"the-politeness:all","type":"the-politeness","kind":"stat","weight":70,"eyebrow":"MANNERS","title":"You said thanks 61 times."},{"seed":2476968473,"date":null,"body":"Sometimes you were.","stat":null,"quote":{"text":"You're absolutely right — let me fix that.","who":"agent","ts":1784930580000,"project":"orchard-v2"},"chart":null,"agent":"claude","project":"orchard-v2","tags":["funny"],"shareable":true,"id":"catchphrase-its:youre-right","type":"catchphrase-its","kind":"quote","weight":69,"eyebrow":"ITS CATCHPHRASE","title":"It has told you you’re right 318 times."},{"seed":2528098442,"date":null,"body":"July 18 to July 29. It didn’t notice, but you did.","stat":null,"quote":null,"chart":{"type":"spark","data":{"points":[4,9,14,22,18,31,44,39,52,61,48,154,96,60,37]},"note":"messages per day"},"agent":"both","project":null,"tags":[],"shareable":true,"id":"the-streak:12","type":"the-streak","kind":"chart","weight":67,"eyebrow":"THE STREAK","title":"Twelve days in a row."},{"seed":988271492,"date":null,"body":"58% Russian, 41% English, and about twenty messages that are honestly both. It has never once asked which one you meant.","stat":{"value":"58","unit":"%","label":"in Russian"},"quote":null,"chart":null,"agent":"both","project":null,"tags":["funny"],"shareable":true,"id":"two-tongues:ru-en","type":"two-tongues","kind":"stat","weight":64,"eyebrow":"TWO TONGUES","title":"You switch languages mid-thought."},{"seed":601606124,"date":1781163480000,"body":"Nine interruptions in eleven minutes, and then this, and then nothing until Friday.","stat":null,"quote":{"text":"стоп. стоп. всё не так, откати обратно","who":"you","ts":1781163480000,"project":"beacon"},"chart":null,"agent":"codex","project":"beacon","tags":["funny"],"shareable":true,"id":"the-rage-quit:2026-06-11","type":"the-rage-quit","kind":"quote","weight":62,"eyebrow":"THAT ONE NIGHT","title":"June 11, 01:38."},{"seed":1270957855,"date":null,"body":"Context compacted, mid-project, mid-thought. You caught it up each time without complaining.","stat":{"value":"23","unit":null,"label":"memory wipes"},"quote":null,"chart":null,"agent":"codex","project":null,"tags":[],"shareable":true,"id":"the-compaction:23","type":"the-compaction","kind":"stat","weight":58,"eyebrow":"MEMORY","title":"It forgot everything 23 times."},{"seed":261432545,"date":null,"body":"It has been rewritten more times than anything else you own. Neither of you has suggested starting over.","stat":null,"quote":null,"chart":null,"agent":"both","project":"orchard","tags":[],"shareable":true,"id":"file-most-touched:app-css","type":"file-most-touched","kind":"award","weight":55,"eyebrow":"THE FILE","title":"One file, 214 edits."},{"seed":967943200,"date":1784135100000,"body":"Last seen June 8. Then, 38 days later, out of nowhere, no preamble, no catching up.","stat":null,"quote":{"text":"ok back to this. where were we","who":"you","ts":1784135100000,"project":"beacon"},"chart":null,"agent":"codex","project":"beacon","tags":[],"shareable":true,"id":"rediscovered:beacon","type":"rediscovered","kind":"onthisday","weight":52,"eyebrow":"38 DAYS APART","title":"You came back to beacon."}],"stats":{"totalSessions":239,"humanTurns":1747,"agentTurns":6691,"toolCalls":27812,"interrupts":122,"compactions":23,"subagents":102,"activeDays":67,"spanDays":181,"totalHours":412,"tokensTotal":6800000000,"estimatedCost":3450,"projects":6,"sessionsScanned":239},"timeline":[{"date":"2026-02-06","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-02-07","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-02-08","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-02-09","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-02-10","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-02-11","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-02-12","sessions":2,"minutes":32,"humanTurns":7,"agent":{"claude":3,"codex":0}},{"date":"2026-02-13","sessions":1,"minutes":39,"humanTurns":32,"agent":{"claude":0,"codex":17}},{"date":"2026-02-14","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-02-15","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-02-16","sessions":2,"minutes":100,"humanTurns":3,"agent":{"claude":5,"codex":4}},{"date":"2026-02-17","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-02-18","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-02-19","sessions":3,"minutes":97,"humanTurns":10,"agent":{"claude":2,"codex":3}},{"date":"2026-02-20","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-02-21","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-02-22","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-02-23","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-02-24","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-02-25","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-02-26","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-02-27","sessions":2,"minutes":216,"humanTurns":31,"agent":{"claude":3,"codex":12}},{"date":"2026-02-28","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-03-01","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-03-02","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-03-03","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-03-04","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-03-05","sessions":3,"minutes":25,"humanTurns":18,"agent":{"claude":2,"codex":11}},{"date":"2026-03-06","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-03-07","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-03-08","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-03-09","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-03-10","sessions":1,"minutes":63,"humanTurns":16,"agent":{"claude":0,"codex":17}},{"date":"2026-03-11","sessions":2,"minutes":260,"humanTurns":15,"agent":{"claude":5,"codex":8}},{"date":"2026-03-12","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-03-13","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-03-14","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-03-15","sessions":2,"minutes":124,"humanTurns":27,"agent":{"claude":5,"codex":8}},{"date":"2026-03-16","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-03-17","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-03-18","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-03-19","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-03-20","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-03-21","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-03-22","sessions":4,"minutes":270,"humanTurns":33,"agent":{"claude":3,"codex":6}},{"date":"2026-03-23","sessions":3,"minutes":221,"humanTurns":34,"agent":{"claude":2,"codex":15}},{"date":"2026-03-24","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-03-25","sessions":1,"minutes":127,"humanTurns":28,"agent":{"claude":4,"codex":1}},{"date":"2026-03-26","sessions":4,"minutes":134,"humanTurns":29,"agent":{"claude":3,"codex":10}},{"date":"2026-03-27","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-03-28","sessions":2,"minutes":104,"humanTurns":39,"agent":{"claude":1,"codex":0}},{"date":"2026-03-29","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-03-30","sessions":3,"minutes":241,"humanTurns":34,"agent":{"claude":4,"codex":7}},{"date":"2026-03-31","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-04-01","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-04-02","sessions":1,"minutes":151,"humanTurns":12,"agent":{"claude":4,"codex":13}},{"date":"2026-04-03","sessions":2,"minutes":88,"humanTurns":11,"agent":{"claude":3,"codex":4}},{"date":"2026-04-04","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-04-05","sessions":4,"minutes":34,"humanTurns":17,"agent":{"claude":3,"codex":18}},{"date":"2026-04-06","sessions":1,"minutes":27,"humanTurns":40,"agent":{"claude":4,"codex":13}},{"date":"2026-04-07","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-04-08","sessions":3,"minutes":205,"humanTurns":6,"agent":{"claude":4,"codex":19}},{"date":"2026-04-09","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-04-10","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-04-11","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-04-12","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-04-13","sessions":3,"minutes":133,"humanTurns":14,"agent":{"claude":0,"codex":15}},{"date":"2026-04-14","sessions":2,"minutes":256,"humanTurns":31,"agent":{"claude":3,"codex":4}},{"date":"2026-04-15","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-04-16","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-04-17","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-04-18","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-04-19","sessions":1,"minutes":111,"humanTurns":12,"agent":{"claude":0,"codex":13}},{"date":"2026-04-20","sessions":1,"minutes":235,"humanTurns":36,"agent":{"claude":0,"codex":17}},{"date":"2026-04-21","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-04-22","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-04-23","sessions":4,"minutes":98,"humanTurns":13,"agent":{"claude":1,"codex":6}},{"date":"2026-04-24","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-04-25","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-04-26","sessions":3,"minutes":185,"humanTurns":18,"agent":{"claude":0,"codex":11}},{"date":"2026-04-27","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-04-28","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-04-29","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-04-30","sessions":4,"minutes":58,"humanTurns":17,"agent":{"claude":1,"codex":10}},{"date":"2026-05-01","sessions":1,"minutes":103,"humanTurns":16,"agent":{"claude":4,"codex":17}},{"date":"2026-05-02","sessions":4,"minutes":226,"humanTurns":9,"agent":{"claude":5,"codex":2}},{"date":"2026-05-03","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-05-04","sessions":2,"minutes":164,"humanTurns":27,"agent":{"claude":3,"codex":8}},{"date":"2026-05-05","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-05-06","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-05-07","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-05-08","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-05-09","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-05-10","sessions":3,"minutes":145,"humanTurns":18,"agent":{"claude":0,"codex":11}},{"date":"2026-05-11","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-05-12","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-05-13","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-05-14","sessions":3,"minutes":197,"humanTurns":38,"agent":{"claude":4,"codex":11}},{"date":"2026-05-15","sessions":4,"minutes":58,"humanTurns":37,"agent":{"claude":1,"codex":6}},{"date":"2026-05-16","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-05-17","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-05-18","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-05-19","sessions":4,"minutes":110,"humanTurns":33,"agent":{"claude":5,"codex":6}},{"date":"2026-05-20","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-05-21","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-05-22","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-05-23","sessions":1,"minutes":167,"humanTurns":28,"agent":{"claude":2,"codex":1}},{"date":"2026-05-24","sessions":4,"minutes":50,"humanTurns":33,"agent":{"claude":1,"codex":6}},{"date":"2026-05-25","sessions":3,"minutes":261,"humanTurns":34,"agent":{"claude":0,"codex":15}},{"date":"2026-05-26","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-05-27","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-05-28","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-05-29","sessions":3,"minutes":189,"humanTurns":30,"agent":{"claude":2,"codex":3}},{"date":"2026-05-30","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-05-31","sessions":2,"minutes":216,"humanTurns":31,"agent":{"claude":1,"codex":4}},{"date":"2026-06-01","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-06-02","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-06-03","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-06-04","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-06-05","sessions":2,"minutes":68,"humanTurns":11,"agent":{"claude":1,"codex":12}},{"date":"2026-06-06","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-06-07","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-06-08","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-06-09","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-06-10","sessions":4,"minutes":142,"humanTurns":37,"agent":{"claude":5,"codex":10}},{"date":"2026-06-11","sessions":3,"minutes":281,"humanTurns":22,"agent":{"claude":4,"codex":15}},{"date":"2026-06-12","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-06-13","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-06-14","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-06-15","sessions":3,"minutes":229,"humanTurns":42,"agent":{"claude":4,"codex":15}},{"date":"2026-06-16","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-06-17","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-06-18","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-06-19","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-06-20","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-06-21","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-06-22","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-06-23","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-06-24","sessions":3,"minutes":49,"humanTurns":30,"agent":{"claude":0,"codex":11}},{"date":"2026-06-25","sessions":4,"minutes":150,"humanTurns":5,"agent":{"claude":3,"codex":18}},{"date":"2026-06-26","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-06-27","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-06-28","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-06-29","sessions":4,"minutes":46,"humanTurns":9,"agent":{"claude":3,"codex":2}},{"date":"2026-06-30","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-07-01","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-07-02","sessions":2,"minutes":252,"humanTurns":7,"agent":{"claude":5,"codex":0}},{"date":"2026-07-03","sessions":1,"minutes":55,"humanTurns":8,"agent":{"claude":0,"codex":9}},{"date":"2026-07-04","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-07-05","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-07-06","sessions":2,"minutes":44,"humanTurns":27,"agent":{"claude":5,"codex":0}},{"date":"2026-07-07","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-07-08","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-07-09","sessions":3,"minutes":77,"humanTurns":10,"agent":{"claude":0,"codex":11}},{"date":"2026-07-10","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-07-11","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-07-12","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-07-13","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-07-14","sessions":1,"minutes":231,"humanTurns":24,"agent":{"claude":0,"codex":17}},{"date":"2026-07-15","sessions":2,"minutes":52,"humanTurns":7,"agent":{"claude":3,"codex":8}},{"date":"2026-07-16","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-07-17","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-07-18","sessions":1,"minutes":75,"humanTurns":36,"agent":{"claude":0,"codex":9}},{"date":"2026-07-19","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-07-20","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-07-21","sessions":1,"minutes":179,"humanTurns":20,"agent":{"claude":2,"codex":1}},{"date":"2026-07-22","sessions":4,"minutes":42,"humanTurns":37,"agent":{"claude":3,"codex":10}},{"date":"2026-07-23","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-07-24","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-07-25","sessions":1,"minutes":127,"humanTurns":40,"agent":{"claude":2,"codex":1}},{"date":"2026-07-26","sessions":4,"minutes":62,"humanTurns":25,"agent":{"claude":1,"codex":6}},{"date":"2026-07-27","sessions":3,"minutes":129,"humanTurns":42,"agent":{"claude":2,"codex":15}},{"date":"2026-07-28","sessions":2,"minutes":136,"humanTurns":19,"agent":{"claude":1,"codex":0}},{"date":"2026-07-29","sessions":1,"minutes":55,"humanTurns":36,"agent":{"claude":4,"codex":9}},{"date":"2026-07-30","sessions":3,"minutes":221,"humanTurns":22,"agent":{"claude":2,"codex":15}},{"date":"2026-07-31","sessions":4,"minutes":154,"humanTurns":29,"agent":{"claude":1,"codex":10}},{"date":"2026-08-01","sessions":4,"minutes":78,"humanTurns":41,"agent":{"claude":1,"codex":2}},{"date":"2026-08-02","sessions":1,"minutes":143,"humanTurns":16,"agent":{"claude":2,"codex":17}},{"date":"2026-08-03","sessions":2,"minutes":80,"humanTurns":15,"agent":{"claude":1,"codex":8}},{"date":"2026-08-04","sessions":3,"minutes":217,"humanTurns":38,"agent":{"claude":0,"codex":19}},{"date":"2026-08-05","sessions":4,"minutes":266,"humanTurns":21,"agent":{"claude":1,"codex":14}}],"meta":{"generatedAt":1785952800000,"version":"0.1.0","redact":"safe"}}</script>
+<script type="application/json" id="codepend-data">{"profile":{"archetype":{"name":"The Midnight Interrogator","tagline":"The best questions arrive after midnight. So do you.","blurb":"18% of your conversations start after the day is officially over. The latest was 04:41. You’re not avoiding sleep. You’re just not finished.","seed":3242911003},"firstSeen":1770433920000,"lastSeen":1785973200000,"activeDays":67,"totalSessions":239,"totalHours":412,"topProject":"orchard","topModel":"gpt-5.6-sol","spiritTool":"exec"},"memories":[{"seed":3401393018,"date":1770442860000,"body":"61 messages, 4h 12m. You ended at 03:47. This is what you were saying:","stat":null,"quote":{"text":"let’s do it again, but without the animation","who":"you","ts":1770371220000,"project":"orchard"},"chart":null,"agent":"codex","project":"orchard","tags":["anniversary"],"shareable":true,"id":"on-this-day:2026-02-06","type":"on-this-day","kind":"onthisday","weight":98,"eyebrow":"SIX MONTHS AGO","title":"You were deep in orchard."},{"seed":1931160607,"date":1770433920000,"body":"February 6, 2026, 21:12. It answered in four seconds and you have been talking ever since.","stat":null,"quote":{"text":"hey can you look at this repo and tell me what it does","who":"you","ts":1770433920000,"project":"orchard"},"chart":null,"agent":"codex","project":"orchard","tags":[],"shareable":true,"id":"first-words:origin","type":"first-words","kind":"quote","weight":92,"eyebrow":"THE FIRST THING YOU EVER SAID","title":"Your opening line."},{"seed":1467214639,"date":null,"body":"For every sentence you typed, it did sixteen things. You have never once watched it all happen.","stat":{"value":"16","unit":"×","label":"actions per sentence"},"quote":null,"chart":null,"agent":"both","project":null,"tags":["numbers"],"shareable":true,"id":"the-ratio:all","type":"the-ratio","kind":"stat","weight":90,"eyebrow":"THE RATIO","title":"1 747 messages from you. 27 812 tool calls back."},{"seed":1987476889,"date":null,"body":"Peak at 17:00. Second peak at 23:00. There is no version of your day where it isn’t around.","stat":null,"quote":null,"chart":{"type":"clock","data":{"bins":[31,44,52,38,12,4,9,27,88,169,141,152,170,133,118,126,148,179,120,96,84,102,118,125]},"note":"local time · 24 bins"},"agent":"both","project":null,"tags":[],"shareable":true,"id":"deep-work-clock:all","type":"deep-work-clock","kind":"chart","weight":86,"eyebrow":"WHEN YOU TALK TO IT","title":"You've used every hour on this clock except 05:00."},{"seed":3040591309,"date":1782727920000,"body":"It started at 19:01 and it ended at 04:12. Nobody asked either of you to do that.","stat":{"value":"9h 11m","unit":null,"label":"without getting up"},"quote":null,"chart":null,"agent":"codex","project":"orchard-v2","tags":[],"shareable":true,"id":"the-marathon:s-4471","type":"the-marathon","kind":"stat","weight":84,"eyebrow":"THE LONGEST SITTING","title":"Nine hours and eleven minutes, one session."},{"seed":3129867543,"date":null,"body":"6.8 billion of them, over six months. War and Peace, 8 700 times over. Estimate, at list price.","stat":{"value":"$3 450","unit":null,"label":"estimated, at list price"},"quote":null,"chart":null,"agent":"both","project":null,"tags":["numbers"],"shareable":true,"id":"the-bill:all","type":"the-bill","kind":"stat","weight":83,"eyebrow":"THE BILL","title":"About $3 450 of tokens."},{"seed":35635519,"date":null,"body":"Two words. No punctuation. It has never once asked you to be more specific.","stat":null,"quote":{"text":"commit and push","who":"you","ts":1785729840000,"project":"orchard"},"chart":null,"agent":"codex","project":"orchard","tags":["funny"],"shareable":true,"id":"catchphrase-yours:kommit","type":"catchphrase-yours","kind":"quote","weight":82,"eyebrow":"YOUR CATCHPHRASE","title":"You have said this 141 times."},{"seed":1909380316,"date":null,"body":"Longest streak 12 days. Longest gap 9. The empty squares are also you.","stat":null,"quote":null,"chart":{"type":"heat","data":{"days":[{"date":"2026-02-06","value":0},{"date":"2026-02-07","value":0},{"date":"2026-02-08","value":0},{"date":"2026-02-09","value":0},{"date":"2026-02-10","value":0},{"date":"2026-02-11","value":0},{"date":"2026-02-12","value":7},{"date":"2026-02-13","value":32},{"date":"2026-02-14","value":0},{"date":"2026-02-15","value":0},{"date":"2026-02-16","value":3},{"date":"2026-02-17","value":0},{"date":"2026-02-18","value":0},{"date":"2026-02-19","value":10},{"date":"2026-02-20","value":0},{"date":"2026-02-21","value":0},{"date":"2026-02-22","value":0},{"date":"2026-02-23","value":0},{"date":"2026-02-24","value":0},{"date":"2026-02-25","value":0},{"date":"2026-02-26","value":0},{"date":"2026-02-27","value":31},{"date":"2026-02-28","value":0},{"date":"2026-03-01","value":0},{"date":"2026-03-02","value":0},{"date":"2026-03-03","value":0},{"date":"2026-03-04","value":0},{"date":"2026-03-05","value":18},{"date":"2026-03-06","value":0},{"date":"2026-03-07","value":0},{"date":"2026-03-08","value":0},{"date":"2026-03-09","value":0},{"date":"2026-03-10","value":16},{"date":"2026-03-11","value":15},{"date":"2026-03-12","value":0},{"date":"2026-03-13","value":0},{"date":"2026-03-14","value":0},{"date":"2026-03-15","value":27},{"date":"2026-03-16","value":0},{"date":"2026-03-17","value":0},{"date":"2026-03-18","value":0},{"date":"2026-03-19","value":0},{"date":"2026-03-20","value":0},{"date":"2026-03-21","value":0},{"date":"2026-03-22","value":33},{"date":"2026-03-23","value":34},{"date":"2026-03-24","value":0},{"date":"2026-03-25","value":28},{"date":"2026-03-26","value":29},{"date":"2026-03-27","value":0},{"date":"2026-03-28","value":39},{"date":"2026-03-29","value":0},{"date":"2026-03-30","value":34},{"date":"2026-03-31","value":0},{"date":"2026-04-01","value":0},{"date":"2026-04-02","value":12},{"date":"2026-04-03","value":11},{"date":"2026-04-04","value":0},{"date":"2026-04-05","value":17},{"date":"2026-04-06","value":40},{"date":"2026-04-07","value":0},{"date":"2026-04-08","value":6},{"date":"2026-04-09","value":0},{"date":"2026-04-10","value":0},{"date":"2026-04-11","value":0},{"date":"2026-04-12","value":0},{"date":"2026-04-13","value":14},{"date":"2026-04-14","value":31},{"date":"2026-04-15","value":0},{"date":"2026-04-16","value":0},{"date":"2026-04-17","value":0},{"date":"2026-04-18","value":0},{"date":"2026-04-19","value":12},{"date":"2026-04-20","value":36},{"date":"2026-04-21","value":0},{"date":"2026-04-22","value":0},{"date":"2026-04-23","value":13},{"date":"2026-04-24","value":0},{"date":"2026-04-25","value":0},{"date":"2026-04-26","value":18},{"date":"2026-04-27","value":0},{"date":"2026-04-28","value":0},{"date":"2026-04-29","value":0},{"date":"2026-04-30","value":17},{"date":"2026-05-01","value":16},{"date":"2026-05-02","value":9},{"date":"2026-05-03","value":0},{"date":"2026-05-04","value":27},{"date":"2026-05-05","value":0},{"date":"2026-05-06","value":0},{"date":"2026-05-07","value":0},{"date":"2026-05-08","value":0},{"date":"2026-05-09","value":0},{"date":"2026-05-10","value":18},{"date":"2026-05-11","value":0},{"date":"2026-05-12","value":0},{"date":"2026-05-13","value":0},{"date":"2026-05-14","value":38},{"date":"2026-05-15","value":37},{"date":"2026-05-16","value":0},{"date":"2026-05-17","value":0},{"date":"2026-05-18","value":0},{"date":"2026-05-19","value":33},{"date":"2026-05-20","value":0},{"date":"2026-05-21","value":0},{"date":"2026-05-22","value":0},{"date":"2026-05-23","value":28},{"date":"2026-05-24","value":33},{"date":"2026-05-25","value":34},{"date":"2026-05-26","value":0},{"date":"2026-05-27","value":0},{"date":"2026-05-28","value":0},{"date":"2026-05-29","value":30},{"date":"2026-05-30","value":0},{"date":"2026-05-31","value":31},{"date":"2026-06-01","value":0},{"date":"2026-06-02","value":0},{"date":"2026-06-03","value":0},{"date":"2026-06-04","value":0},{"date":"2026-06-05","value":11},{"date":"2026-06-06","value":0},{"date":"2026-06-07","value":0},{"date":"2026-06-08","value":0},{"date":"2026-06-09","value":0},{"date":"2026-06-10","value":37},{"date":"2026-06-11","value":22},{"date":"2026-06-12","value":0},{"date":"2026-06-13","value":0},{"date":"2026-06-14","value":0},{"date":"2026-06-15","value":42},{"date":"2026-06-16","value":0},{"date":"2026-06-17","value":0},{"date":"2026-06-18","value":0},{"date":"2026-06-19","value":0},{"date":"2026-06-20","value":0},{"date":"2026-06-21","value":0},{"date":"2026-06-22","value":0},{"date":"2026-06-23","value":0},{"date":"2026-06-24","value":30},{"date":"2026-06-25","value":5},{"date":"2026-06-26","value":0},{"date":"2026-06-27","value":0},{"date":"2026-06-28","value":0},{"date":"2026-06-29","value":9},{"date":"2026-06-30","value":0},{"date":"2026-07-01","value":0},{"date":"2026-07-02","value":7},{"date":"2026-07-03","value":8},{"date":"2026-07-04","value":0},{"date":"2026-07-05","value":0},{"date":"2026-07-06","value":27},{"date":"2026-07-07","value":0},{"date":"2026-07-08","value":0},{"date":"2026-07-09","value":10},{"date":"2026-07-10","value":0},{"date":"2026-07-11","value":0},{"date":"2026-07-12","value":0},{"date":"2026-07-13","value":0},{"date":"2026-07-14","value":24},{"date":"2026-07-15","value":7},{"date":"2026-07-16","value":0},{"date":"2026-07-17","value":0},{"date":"2026-07-18","value":36},{"date":"2026-07-19","value":0},{"date":"2026-07-20","value":0},{"date":"2026-07-21","value":20},{"date":"2026-07-22","value":37},{"date":"2026-07-23","value":0},{"date":"2026-07-24","value":0},{"date":"2026-07-25","value":40},{"date":"2026-07-26","value":25},{"date":"2026-07-27","value":42},{"date":"2026-07-28","value":19},{"date":"2026-07-29","value":36},{"date":"2026-07-30","value":22},{"date":"2026-07-31","value":29},{"date":"2026-08-01","value":41},{"date":"2026-08-02","value":16},{"date":"2026-08-03","value":15},{"date":"2026-08-04","value":38},{"date":"2026-08-05","value":21}]}},"agent":"both","project":null,"tags":[],"shareable":true,"id":"the-heatmap:180","type":"the-heatmap","kind":"chart","weight":80,"eyebrow":"67 DAYS LIT","title":"67 days lit out of 181."},{"seed":4178568829,"date":null,"body":"Median: eleven seconds in. You knew where it was going and you did not want to watch it get there.","stat":{"value":"122","unit":null,"label":"interruptions"},"quote":null,"chart":null,"agent":"codex","project":null,"tags":["funny"],"shareable":true,"id":"the-interruption:all","type":"the-interruption","kind":"stat","weight":79,"eyebrow":"ESC","title":"You stopped it mid-sentence 122 times."},{"seed":62569385,"date":null,"body":"5 projects in total. Two of them you visited exactly once.","stat":null,"quote":null,"chart":{"type":"donut","data":{"segments":[{"label":"orchard","value":4120},{"label":"orchard-v2","value":2380},{"label":"workspace","value":1210},{"label":"beacon","value":640},{"label":"kiln","value":210},{"label":"codepend","value":90}]},"note":"minutes per project"},"agent":"both","project":null,"tags":[],"shareable":true,"id":"project-constellation:all","type":"project-constellation","kind":"chart","weight":78,"eyebrow":"WHERE IT ALL WENT","title":"orchard took 46% of everything."},{"seed":1555942166,"date":1785319920000,"body":"The last thing either of you said that night was this. It was a Wednesday.","stat":null,"quote":{"text":"ok that works. good night","who":"you","ts":1785319920000,"project":"orchard"},"chart":null,"agent":"codex","project":"orchard","tags":[],"shareable":true,"id":"the-long-night:2026-07-29","type":"the-long-night","kind":"onthisday","weight":77,"eyebrow":"A WEEK AGO TONIGHT","title":"At 04:12 you were still going."},{"seed":2046410640,"date":null,"body":"Four times more than anything else it does. Your relationship is mostly it running things and telling you what happened.","stat":{"value":"21 910","unit":null,"label":"exec calls"},"quote":null,"chart":null,"agent":"codex","project":null,"tags":["numbers"],"shareable":true,"id":"spirit-tool:exec","type":"spirit-tool","kind":"stat","weight":75,"eyebrow":"YOUR SPIRIT TOOL","title":"exec, 21 910 times."},{"seed":1559752728,"date":null,"body":"You switched on June 14 and never switched back. It took two days.","stat":null,"quote":null,"chart":{"type":"bars","data":{"rows":[{"label":"gpt-5.6-sol","value":1106},{"label":"claude-fable-5","value":3155},{"label":"claude-opus-5","value":1359},{"label":"claude-opus-4-8","value":899},{"label":"gpt-5.5","value":103},{"label":"gpt-5.6-luna","value":69}]},"note":"assistant messages per model"},"agent":"both","project":null,"tags":[],"shareable":true,"id":"model-loyalty:all","type":"model-loyalty","kind":"chart","weight":74,"eyebrow":"WHO YOU TALKED TO","title":"gpt-5.6-sol did most of the talking."},{"seed":3963659219,"date":1785348000000,"body":"7 hours, 4 sessions, 2 projects. Whatever was going on that day, it was going on all day.","stat":{"value":"154","unit":null,"label":"messages in one day"},"quote":null,"chart":null,"agent":"both","project":"orchard","tags":[],"shareable":true,"id":"peak-day:2026-07-29","type":"peak-day","kind":"stat","weight":73,"eyebrow":"YOUR BIGGEST DAY","title":"July 29: 154 messages."},{"seed":545366072,"date":1774646400000,"body":"9 messages on March 27. That’s the whole story. You had a plan that morning.","stat":null,"quote":{"text":"the nozzle needs to heat evenly, try a pid loop","who":"you","ts":1774646400000,"project":"kiln"},"chart":null,"agent":"codex","project":"kiln","tags":[],"shareable":true,"id":"ghost-project:kiln","type":"ghost-project","kind":"onthisday","weight":72,"eyebrow":"THE ONE YOU LEFT","title":"Whatever happened to kiln?"},{"seed":3519722052,"date":null,"body":"To a program. It cannot tell. Don’t let anyone talk you out of it.","stat":{"value":"61","unit":null,"label":"thank-yous"},"quote":null,"chart":null,"agent":"both","project":null,"tags":["funny"],"shareable":true,"id":"the-politeness:all","type":"the-politeness","kind":"stat","weight":70,"eyebrow":"MANNERS","title":"You said thanks 61 times."},{"seed":2476968473,"date":null,"body":"Sometimes you were.","stat":null,"quote":{"text":"You're absolutely right — let me fix that.","who":"agent","ts":1784930580000,"project":"orchard-v2"},"chart":null,"agent":"claude","project":"orchard-v2","tags":["funny"],"shareable":true,"id":"catchphrase-its:youre-right","type":"catchphrase-its","kind":"quote","weight":69,"eyebrow":"ITS CATCHPHRASE","title":"It has told you you’re right 318 times."},{"seed":2528098442,"date":null,"body":"July 18 to July 29. It didn’t notice, but you did.","stat":null,"quote":null,"chart":{"type":"spark","data":{"points":[4,9,14,22,18,31,44,39,52,61,48,154,96,60,37]},"note":"messages per day"},"agent":"both","project":null,"tags":[],"shareable":true,"id":"the-streak:12","type":"the-streak","kind":"chart","weight":67,"eyebrow":"THE STREAK","title":"Twelve days in a row."},{"seed":988271492,"date":null,"body":"58% Russian, 41% English, and about twenty messages that are honestly both. It has never once asked which one you meant.","stat":{"value":"58","unit":"%","label":"in Russian"},"quote":null,"chart":null,"agent":"both","project":null,"tags":["funny"],"shareable":true,"id":"two-tongues:ru-en","type":"two-tongues","kind":"stat","weight":64,"eyebrow":"TWO TONGUES","title":"You switch languages mid-thought."},{"seed":601606124,"date":1781163480000,"body":"Nine interruptions in eleven minutes, and then this, and then nothing until Friday.","stat":null,"quote":{"text":"stop. stop. this is all wrong, roll it back.","who":"you","ts":1781163480000,"project":"beacon"},"chart":null,"agent":"codex","project":"beacon","tags":["funny"],"shareable":true,"id":"the-rage-quit:2026-06-11","type":"the-rage-quit","kind":"quote","weight":62,"eyebrow":"THAT ONE NIGHT","title":"June 11, 01:38."},{"seed":1270957855,"date":null,"body":"Context compacted, mid-project, mid-thought. You caught it up each time without complaining.","stat":{"value":"23","unit":null,"label":"memory wipes"},"quote":null,"chart":null,"agent":"codex","project":null,"tags":[],"shareable":true,"id":"the-compaction:23","type":"the-compaction","kind":"stat","weight":58,"eyebrow":"MEMORY","title":"It forgot everything 23 times."},{"seed":261432545,"date":null,"body":"It has been rewritten more times than anything else you own. Neither of you has suggested starting over.","stat":null,"quote":null,"chart":null,"agent":"both","project":"orchard","tags":[],"shareable":true,"id":"file-most-touched:app-css","type":"file-most-touched","kind":"award","weight":55,"eyebrow":"THE FILE","title":"One file, 214 edits."},{"seed":967943200,"date":1784135100000,"body":"Last seen June 8. Then, 38 days later, out of nowhere, no preamble, no catching up.","stat":null,"quote":{"text":"ok back to this. where were we","who":"you","ts":1784135100000,"project":"beacon"},"chart":null,"agent":"codex","project":"beacon","tags":[],"shareable":true,"id":"rediscovered:beacon","type":"rediscovered","kind":"onthisday","weight":52,"eyebrow":"38 DAYS APART","title":"You came back to beacon."}],"stats":{"totalSessions":239,"humanTurns":1747,"agentTurns":6691,"toolCalls":27812,"interrupts":122,"compactions":23,"subagents":102,"activeDays":67,"spanDays":181,"totalHours":412,"tokensTotal":6800000000,"estimatedCost":3450,"projects":6,"sessionsScanned":239},"timeline":[{"date":"2026-02-06","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-02-07","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-02-08","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-02-09","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-02-10","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-02-11","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-02-12","sessions":2,"minutes":32,"humanTurns":7,"agent":{"claude":3,"codex":0}},{"date":"2026-02-13","sessions":1,"minutes":39,"humanTurns":32,"agent":{"claude":0,"codex":17}},{"date":"2026-02-14","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-02-15","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-02-16","sessions":2,"minutes":100,"humanTurns":3,"agent":{"claude":5,"codex":4}},{"date":"2026-02-17","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-02-18","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-02-19","sessions":3,"minutes":97,"humanTurns":10,"agent":{"claude":2,"codex":3}},{"date":"2026-02-20","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-02-21","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-02-22","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-02-23","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-02-24","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-02-25","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-02-26","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-02-27","sessions":2,"minutes":216,"humanTurns":31,"agent":{"claude":3,"codex":12}},{"date":"2026-02-28","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-03-01","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-03-02","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-03-03","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-03-04","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-03-05","sessions":3,"minutes":25,"humanTurns":18,"agent":{"claude":2,"codex":11}},{"date":"2026-03-06","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-03-07","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-03-08","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-03-09","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-03-10","sessions":1,"minutes":63,"humanTurns":16,"agent":{"claude":0,"codex":17}},{"date":"2026-03-11","sessions":2,"minutes":260,"humanTurns":15,"agent":{"claude":5,"codex":8}},{"date":"2026-03-12","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-03-13","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-03-14","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-03-15","sessions":2,"minutes":124,"humanTurns":27,"agent":{"claude":5,"codex":8}},{"date":"2026-03-16","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-03-17","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-03-18","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-03-19","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-03-20","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-03-21","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-03-22","sessions":4,"minutes":270,"humanTurns":33,"agent":{"claude":3,"codex":6}},{"date":"2026-03-23","sessions":3,"minutes":221,"humanTurns":34,"agent":{"claude":2,"codex":15}},{"date":"2026-03-24","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-03-25","sessions":1,"minutes":127,"humanTurns":28,"agent":{"claude":4,"codex":1}},{"date":"2026-03-26","sessions":4,"minutes":134,"humanTurns":29,"agent":{"claude":3,"codex":10}},{"date":"2026-03-27","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-03-28","sessions":2,"minutes":104,"humanTurns":39,"agent":{"claude":1,"codex":0}},{"date":"2026-03-29","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-03-30","sessions":3,"minutes":241,"humanTurns":34,"agent":{"claude":4,"codex":7}},{"date":"2026-03-31","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-04-01","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-04-02","sessions":1,"minutes":151,"humanTurns":12,"agent":{"claude":4,"codex":13}},{"date":"2026-04-03","sessions":2,"minutes":88,"humanTurns":11,"agent":{"claude":3,"codex":4}},{"date":"2026-04-04","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-04-05","sessions":4,"minutes":34,"humanTurns":17,"agent":{"claude":3,"codex":18}},{"date":"2026-04-06","sessions":1,"minutes":27,"humanTurns":40,"agent":{"claude":4,"codex":13}},{"date":"2026-04-07","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-04-08","sessions":3,"minutes":205,"humanTurns":6,"agent":{"claude":4,"codex":19}},{"date":"2026-04-09","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-04-10","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-04-11","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-04-12","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-04-13","sessions":3,"minutes":133,"humanTurns":14,"agent":{"claude":0,"codex":15}},{"date":"2026-04-14","sessions":2,"minutes":256,"humanTurns":31,"agent":{"claude":3,"codex":4}},{"date":"2026-04-15","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-04-16","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-04-17","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-04-18","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-04-19","sessions":1,"minutes":111,"humanTurns":12,"agent":{"claude":0,"codex":13}},{"date":"2026-04-20","sessions":1,"minutes":235,"humanTurns":36,"agent":{"claude":0,"codex":17}},{"date":"2026-04-21","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-04-22","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-04-23","sessions":4,"minutes":98,"humanTurns":13,"agent":{"claude":1,"codex":6}},{"date":"2026-04-24","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-04-25","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-04-26","sessions":3,"minutes":185,"humanTurns":18,"agent":{"claude":0,"codex":11}},{"date":"2026-04-27","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-04-28","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-04-29","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-04-30","sessions":4,"minutes":58,"humanTurns":17,"agent":{"claude":1,"codex":10}},{"date":"2026-05-01","sessions":1,"minutes":103,"humanTurns":16,"agent":{"claude":4,"codex":17}},{"date":"2026-05-02","sessions":4,"minutes":226,"humanTurns":9,"agent":{"claude":5,"codex":2}},{"date":"2026-05-03","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-05-04","sessions":2,"minutes":164,"humanTurns":27,"agent":{"claude":3,"codex":8}},{"date":"2026-05-05","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-05-06","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-05-07","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-05-08","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-05-09","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-05-10","sessions":3,"minutes":145,"humanTurns":18,"agent":{"claude":0,"codex":11}},{"date":"2026-05-11","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-05-12","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-05-13","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-05-14","sessions":3,"minutes":197,"humanTurns":38,"agent":{"claude":4,"codex":11}},{"date":"2026-05-15","sessions":4,"minutes":58,"humanTurns":37,"agent":{"claude":1,"codex":6}},{"date":"2026-05-16","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-05-17","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-05-18","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-05-19","sessions":4,"minutes":110,"humanTurns":33,"agent":{"claude":5,"codex":6}},{"date":"2026-05-20","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-05-21","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-05-22","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-05-23","sessions":1,"minutes":167,"humanTurns":28,"agent":{"claude":2,"codex":1}},{"date":"2026-05-24","sessions":4,"minutes":50,"humanTurns":33,"agent":{"claude":1,"codex":6}},{"date":"2026-05-25","sessions":3,"minutes":261,"humanTurns":34,"agent":{"claude":0,"codex":15}},{"date":"2026-05-26","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-05-27","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-05-28","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-05-29","sessions":3,"minutes":189,"humanTurns":30,"agent":{"claude":2,"codex":3}},{"date":"2026-05-30","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-05-31","sessions":2,"minutes":216,"humanTurns":31,"agent":{"claude":1,"codex":4}},{"date":"2026-06-01","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-06-02","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-06-03","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-06-04","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-06-05","sessions":2,"minutes":68,"humanTurns":11,"agent":{"claude":1,"codex":12}},{"date":"2026-06-06","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-06-07","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-06-08","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-06-09","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-06-10","sessions":4,"minutes":142,"humanTurns":37,"agent":{"claude":5,"codex":10}},{"date":"2026-06-11","sessions":3,"minutes":281,"humanTurns":22,"agent":{"claude":4,"codex":15}},{"date":"2026-06-12","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-06-13","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-06-14","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-06-15","sessions":3,"minutes":229,"humanTurns":42,"agent":{"claude":4,"codex":15}},{"date":"2026-06-16","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-06-17","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-06-18","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-06-19","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-06-20","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-06-21","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-06-22","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-06-23","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-06-24","sessions":3,"minutes":49,"humanTurns":30,"agent":{"claude":0,"codex":11}},{"date":"2026-06-25","sessions":4,"minutes":150,"humanTurns":5,"agent":{"claude":3,"codex":18}},{"date":"2026-06-26","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-06-27","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-06-28","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-06-29","sessions":4,"minutes":46,"humanTurns":9,"agent":{"claude":3,"codex":2}},{"date":"2026-06-30","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-07-01","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-07-02","sessions":2,"minutes":252,"humanTurns":7,"agent":{"claude":5,"codex":0}},{"date":"2026-07-03","sessions":1,"minutes":55,"humanTurns":8,"agent":{"claude":0,"codex":9}},{"date":"2026-07-04","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-07-05","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-07-06","sessions":2,"minutes":44,"humanTurns":27,"agent":{"claude":5,"codex":0}},{"date":"2026-07-07","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-07-08","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-07-09","sessions":3,"minutes":77,"humanTurns":10,"agent":{"claude":0,"codex":11}},{"date":"2026-07-10","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-07-11","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-07-12","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-07-13","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-07-14","sessions":1,"minutes":231,"humanTurns":24,"agent":{"claude":0,"codex":17}},{"date":"2026-07-15","sessions":2,"minutes":52,"humanTurns":7,"agent":{"claude":3,"codex":8}},{"date":"2026-07-16","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-07-17","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-07-18","sessions":1,"minutes":75,"humanTurns":36,"agent":{"claude":0,"codex":9}},{"date":"2026-07-19","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-07-20","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-07-21","sessions":1,"minutes":179,"humanTurns":20,"agent":{"claude":2,"codex":1}},{"date":"2026-07-22","sessions":4,"minutes":42,"humanTurns":37,"agent":{"claude":3,"codex":10}},{"date":"2026-07-23","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-07-24","sessions":0,"minutes":0,"humanTurns":0,"agent":{"claude":0,"codex":0}},{"date":"2026-07-25","sessions":1,"minutes":127,"humanTurns":40,"agent":{"claude":2,"codex":1}},{"date":"2026-07-26","sessions":4,"minutes":62,"humanTurns":25,"agent":{"claude":1,"codex":6}},{"date":"2026-07-27","sessions":3,"minutes":129,"humanTurns":42,"agent":{"claude":2,"codex":15}},{"date":"2026-07-28","sessions":2,"minutes":136,"humanTurns":19,"agent":{"claude":1,"codex":0}},{"date":"2026-07-29","sessions":1,"minutes":55,"humanTurns":36,"agent":{"claude":4,"codex":9}},{"date":"2026-07-30","sessions":3,"minutes":221,"humanTurns":22,"agent":{"claude":2,"codex":15}},{"date":"2026-07-31","sessions":4,"minutes":154,"humanTurns":29,"agent":{"claude":1,"codex":10}},{"date":"2026-08-01","sessions":4,"minutes":78,"humanTurns":41,"agent":{"claude":1,"codex":2}},{"date":"2026-08-02","sessions":1,"minutes":143,"humanTurns":16,"agent":{"claude":2,"codex":17}},{"date":"2026-08-03","sessions":2,"minutes":80,"humanTurns":15,"agent":{"claude":1,"codex":8}},{"date":"2026-08-04","sessions":3,"minutes":217,"humanTurns":38,"agent":{"claude":0,"codex":19}},{"date":"2026-08-05","sessions":4,"minutes":266,"humanTurns":21,"agent":{"claude":1,"codex":14}}],"meta":{"generatedAt":1785952800000,"version":"0.1.0","redact":"safe"}}</script>
 <script type="module">/* ---- src/art.js (inlined) ---- */
 globalThis.CODEPEND_ART = (() => {
 /**
@@ -4841,6 +5054,1134 @@ return {
 };
 })();
 
+/* ---- src/app/archetype-card.js (inlined) ---- */
+globalThis.CODEPEND_ARCHETYPE_CARD = (() => {
+/* ============================================================================
+   codepend — archetype-card.js
+   The archetype card: one person, one name, one read on them.
+
+   This is the asset that gets posted. It is deliberately NOT the generic share
+   composition — that one has to serve quotes, stats and charts, so it can only
+   ever be a compromise. This module knows it is drawing exactly one thing, and
+   spends the whole frame on it:
+
+     • the NAME, enormous, fitted by measurement to the box it has;
+     • the TAGLINE under it in the serif italic the product uses for quotes;
+     • the BLURB small, because it is the footnote to the claim, not the claim;
+     • three or four NUMBERS along the base — evidence, set quiet;
+     • the wordmark and `npx codepend` at the bottom, small and always present.
+
+   Three ideas hold it together:
+
+   1. GEOMETRY IS PURE. `archetypeLayout()` returns every box for a preset and
+      touches no canvas, no DOM, no globals. That is the only way this gets real
+      test coverage, and it is why the fitting logic can be trusted: the tests
+      run the same code the browser runs.
+
+   2. TYPE IS MEASURED, NEVER GUESSED. "The Sampler" and "The Midnight
+      Interrogator" differ by 14 characters and both have to look deliberate.
+      The name is fitted by searching line-break partitions and taking the
+      largest size that fits — see `fitName`. In the browser the measurer is
+      `ctx.measureText`; in Node it is a per-glyph advance table, close enough
+      that the tests assert real behaviour rather than a tautology.
+
+   3. CONTRAST IS COMPUTED, NEVER ASSUMED. The art is the ground, full bleed.
+      The scrim over it is not a designer's guess: `requiredScrimAlpha()` solves
+      for the alpha at which the ink clears 4.5:1 against the brightest thing
+      that seed's palette can paint, and the gradient is built so every box that
+      carries ink sits at or below that alpha. See `scrimPlan`.
+
+   PRIVACY. Whatever lands here ends up on someone's timeline. Archetype name,
+   tagline, blurb, round numbers, wordmark, `npx codepend`. Nothing else — no
+   project names, no quotes, no paths, no model names. `safeText()` is the gate
+   and it fails closed: text it cannot make safe is dropped, and the layout is
+   built to look composed with any one part missing (see the `--redact paranoid`
+   case, where the Two-Word Tyrant loses its quoted tagline).
+
+   Zero dependencies. Node stdlib only, no DOM at import time, so `node --test`
+   can import this file directly.
+   ========================================================================== */
+
+const clampNum = (v, a, b) => Math.min(b, Math.max(a, v));
+
+/* ── frames ───────────────────────────────────────────────────────────── */
+
+/**
+ * The three frames. Each is a re-composition, not a rescale:
+ *   square — the default. Posts everywhere, crops nowhere. Stacked lockup.
+ *   story  — 9:16, with platform-UI safe insets and a lot more air above the
+ *            name; the top third is pure art.
+ *   wide   — X and link previews. No vertical room, so the name and the numbers
+ *            sit side by side with a hairline between them.
+ */
+const ARCHETYPE_PRESETS = {
+  square: [1080, 1080],
+  story: [1080, 1920],
+  wide: [1200, 675],
+};
+
+const DEFAULT_PRESET = 'square';
+
+/**
+ * Fixed copy. The eyebrow labels the name; the CTA is the whole funnel.
+ *
+ * The eyebrow used to read "WHAT YOU ARE", which frames the name nicely for
+ * someone who already knows what they are looking at — and says nothing at all
+ * to the person this card exists for. Seen cold in a feed, "The Everyday
+ * Companion / 214 days / 718 sessions / 5 805 messages" could be therapy, a
+ * gym, a language app. Spotify Wrapped can open on a name because the brand
+ * carries the category; `codepend` carries nothing yet, so the card has to say
+ * what it is about.
+ *
+ * "coding agent", not "coding": the logs are of sessions with an agent, and all
+ * twelve archetypes are about how someone treats it — interrupting, thanking,
+ * delegating, staying up with it. None of them are about code. "Agent" alone
+ * would lose the domain (an insurance agent keeps logs too); the compound
+ * carries both, and it is the phrase the README already opens with.
+ */
+const EYEBROW = 'WHAT YOUR CODING AGENT LOGS SAY YOU ARE';
+const WORDMARK = 'codepend';
+/**
+ * Sits after the wordmark when the frame is wide enough to hold it. A bare
+ * `codepend` is a word nobody has heard yet; this is the one line that turns it
+ * into a thing somebody might go and get.
+ */
+const WORDMARK_SUB = 'the diary your coding agent keeps about you';
+const CTA = 'npx codepend';
+
+/** WCAG AA for large text is 3:1. We hold the card to body-text AA anyway. */
+const MIN_CONTRAST = 4.5;
+
+/** Ink and scrim per theme — the same values app.css declares. */
+const THEMES = {
+  // `quiet` is lifted from the page's value on purpose. On the page it sits on a
+  // solid surface; here it sits on art under a scrim that is deliberately not
+  // opaque, and #827D75 tops out at 4.96:1 on a perfectly clean ground — it
+  // measured 3.59-4.58:1 on real pixels, under the bar this file claims to
+  // hold. Raising the scrim instead would have to take it to alpha ~1 and erase
+  // the art, so the ink moves rather than the ground.
+  dark: { ink: '#F4F1EC', muted: '#B9B4AC', quiet: '#BDB7AE', scrim: '#05060A', paper: '#06070A', rule: 'rgba(255,255,255,.18)' },
+  light: { ink: '#12100D', muted: '#4A453D', quiet: '#4F4A42', scrim: '#FAF7F2', paper: '#F7F4EF', rule: 'rgba(0,0,0,.16)' },
+};
+
+const FALLBACK_PALETTE = { bg: '#0B0F17', fg: '#F4F1EC', accents: ['#59AAF8', '#8771DE', '#A9C7F2'] };
+
+const FONTS = {
+  display: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+  serif: '"Iowan Old Style", Georgia, "Times New Roman", serif',
+};
+
+/* ── privacy gate ─────────────────────────────────────────────────────── */
+
+/**
+ * Anything matching these never reaches the card. Kept in sync with the RISKY
+ * list in app.js on purpose: two copies that agree beat one import that this
+ * module cannot have (app.js is inlined, not a module with exports).
+ */
+const RISKY = [
+  /https?:\/\/\S+/i,
+  /\b[\w.+-]+@[\w-]+\.[\w.]{2,}\b/,
+  /\bsk-[A-Za-z0-9_-]{8,}/,
+  /\bghp_[A-Za-z0-9]{8,}/,
+  /\bAKIA[0-9A-Z]{8,}/,
+  /\beyJ[A-Za-z0-9_-]{8,}\./,
+  /~\/[\w.\-/]+/,
+  /(^|\s)[~/][\w.-]+\/[\w.\-/]+/,
+  /\b[A-Za-z]:\\[\w\\.-]+/,
+  /\b\d{1,3}(\.\d{1,3}){3}\b/,
+  /```/,
+];
+
+/** @param {string} t */
+function isRisky(t) {
+  return !!t && RISKY.some((re) => re.test(String(t)));
+}
+
+const RX_ESC = /[.*+?^${}()|[\]\\]/g;
+
+/**
+ * The only text that may be painted.
+ *
+ * Two jobs, in order. First substitution: the blurbs for The Serial Monogamist
+ * and The Sampler interpolate real project names, and a project name is exactly
+ * the thing that must not appear on a poster someone's colleagues will see. The
+ * caller passes the names it knows about (`redactNames`) and they are replaced
+ * with a generic word. Second, the gate: if anything risky survives, the whole
+ * string is dropped rather than partially scrubbed — a half-redacted path is
+ * still a leak, and the layout is built to survive a missing field.
+ *
+ * @param {string} text
+ * @param {{redactNames?:string[], replacement?:string, plural?:string, maxLen?:number}} [opts]
+ * @returns {string} '' when the text cannot be made safe
+ */
+function safeText(text, opts) {
+  const o = opts || {};
+  if (text == null) return '';
+  let s = String(text).replace(/\s+/g, ' ').trim();
+  if (!s) return '';
+  const names = (o.redactNames || [])
+    .map((n) => String(n || '').trim())
+    .filter((n) => n.length >= 3)
+    .sort((a, b) => b.length - a.length); // longest first: "acme-web" before "acme"
+  const one = o.replacement || 'one project';
+  for (const n of names) {
+    s = s.replace(new RegExp(n.replace(RX_ESC, '\\$&'), 'gi'), one);
+  }
+  if (names.length) {
+    // The Sampler names three ghosted projects in a row. Substituting each one
+    // gives "one project, one project and one project", which is worse than the
+    // leak in a different way — it reads as a bug. Collapse the run.
+    const R = one.replace(RX_ESC, '\\$&');
+    s = s.replace(new RegExp(`${R}(?:(?:,\\s*|\\s+and\\s+)${R})+`, 'gi'), o.plural || 'a few projects');
+  }
+  if (isRisky(s)) return '';
+  const max = o.maxLen || 0;
+  if (max && s.length > max) s = s.slice(0, max - 1).replace(/\s\S*$/, '') + '…';
+  return s;
+}
+
+/* ── colour ───────────────────────────────────────────────────────────── */
+
+/** Accepts `#rgb`, `#rrggbb`, `r g b` and `r,g,b` (the CSS custom-property form). */
+function parseColor(c) {
+  const s = String(c == null ? '' : c).trim();
+  let m = /^#([0-9a-f]{3})$/i.exec(s);
+  if (m) return m[1].split('').map((h) => parseInt(h + h, 16));
+  m = /^#([0-9a-f]{6})$/i.exec(s);
+  if (m) return [0, 2, 4].map((i) => parseInt(m[1].slice(i, i + 2), 16));
+  m = /^(\d{1,3})[\s,]+(\d{1,3})[\s,]+(\d{1,3})$/.exec(s);
+  if (m) return [1, 2, 3].map((i) => Math.min(255, +m[i]));
+  return [0, 0, 0];
+}
+
+const toHex = (rgb) => '#' + rgb.map((v) => Math.round(clampNum(v, 0, 255)).toString(16).padStart(2, '0')).join('');
+
+/** WCAG relative luminance. */
+function relLuminance(color) {
+  const [r, g, b] = parseColor(color).map((v) => {
+    const c = v / 255;
+    return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+/** WCAG contrast ratio, 1..21. Order-independent. */
+function contrastRatio(a, b) {
+  const la = relLuminance(a);
+  const lb = relLuminance(b);
+  return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+}
+
+/** Linear mix in sRGB space — matches what canvas does when it composites. */
+function mixColor(a, b, t) {
+  const A = parseColor(a);
+  const B = parseColor(b);
+  const k = clampNum(t, 0, 1);
+  return toHex([0, 1, 2].map((i) => A[i] + (B[i] - A[i]) * k));
+}
+
+/** `over` painted at `alpha` on top of `base`. */
+function blendOver(base, over, alpha) {
+  return mixColor(base, over, alpha);
+}
+
+/**
+ * The brightest (dark theme) or darkest (light theme) thing the art can
+ * plausibly paint under the type.
+ *
+ * `palette()` hands back bg + three accents, but art.js also paints a `hot`
+ * tone near oklch L .9 and blurs it, which blooms brighter than any accent. So
+ * the worst case is the extreme palette colour pushed a further 45% toward the
+ * extreme. Guessing low here would mean shipping a card that fails contrast on
+ * some seeds and nobody would ever find out; guessing high costs a slightly
+ * heavier scrim, which is the cheap mistake.
+ */
+function worstArtColor(pal, theme) {
+  const p = pal && Array.isArray(pal.accents) ? pal : FALLBACK_PALETTE;
+  const cols = [p.bg, ...p.accents].filter(Boolean);
+  const dark = theme !== 'light';
+  let pick = cols[0];
+  for (const c of cols) {
+    const better = dark ? relLuminance(c) > relLuminance(pick) : relLuminance(c) < relLuminance(pick);
+    if (better) pick = c;
+  }
+  return mixColor(pick, dark ? '#FFFFFF' : '#000000', 0.45);
+}
+
+/**
+ * Smallest alpha at which `ink` over `art` covered by `scrim` clears `ratio`.
+ * Monotonic in alpha, so a bisection is exact to the step it returns.
+ * @returns {number} 0..1, or 1 when the ratio is unreachable
+ */
+function requiredScrimAlpha(ink, scrim, art, ratio = MIN_CONTRAST) {
+  if (contrastRatio(ink, art) >= ratio) return 0;
+  if (contrastRatio(ink, scrim) < ratio) return 1;
+  let lo = 0;
+  let hi = 1;
+  for (let i = 0; i < 24; i++) {
+    const mid = (lo + hi) / 2;
+    if (contrastRatio(ink, blendOver(art, scrim, mid)) >= ratio) hi = mid;
+    else lo = mid;
+  }
+  return Math.min(1, Math.ceil(hi * 100) / 100);
+}
+
+/* ── measurement ──────────────────────────────────────────────────────── */
+
+/*
+ * Advance widths as a fraction of the em, for the two faces the card uses.
+ * These exist so `archetypeLayout` is pure: Node has no `measureText`, and a
+ * layout that could only be exercised through a canvas would never be tested.
+ * They are approximations of the system grotesque and the Georgia-class serif —
+ * within a few percent, which is all the fitting search needs, and the browser
+ * re-fits with the real metrics anyway.
+ */
+const W_DISPLAY = {
+  ' ': 0.28, '.': 0.28, ',': 0.28, ':': 0.28, ';': 0.28, '!': 0.28, '?': 0.56,
+  "'": 0.2, '’': 0.2, '"': 0.36, '“': 0.36, '”': 0.36, '«': 0.45, '»': 0.45,
+  '-': 0.35, '–': 0.6, '—': 1, '/': 0.45, '\\': 0.45, '(': 0.34, ')': 0.34,
+  '+': 0.6, '%': 0.9, '&': 0.72, '·': 0.28, '×': 0.6,
+  i: 0.25, j: 0.25, l: 0.25, t: 0.33, f: 0.31, r: 0.37, I: 0.28,
+  a: 0.56, b: 0.59, c: 0.53, d: 0.59, e: 0.56, g: 0.59, h: 0.58, k: 0.55,
+  n: 0.58, o: 0.59, p: 0.59, q: 0.59, s: 0.53, u: 0.58, v: 0.52, x: 0.53,
+  y: 0.52, z: 0.49, m: 0.89, w: 0.76,
+  A: 0.68, B: 0.68, C: 0.72, D: 0.72, E: 0.66, F: 0.61, G: 0.77, H: 0.72,
+  J: 0.53, K: 0.69, L: 0.59, N: 0.73, O: 0.78, P: 0.66, Q: 0.78, R: 0.69,
+  S: 0.66, T: 0.62, U: 0.72, V: 0.67, X: 0.66, Y: 0.64, Z: 0.61, M: 0.89, W: 0.95,
+};
+const W_SERIF = {
+  ' ': 0.25, '.': 0.25, ',': 0.25, ':': 0.28, ';': 0.28, '!': 0.33, '?': 0.44,
+  "'": 0.18, '’': 0.18, '"': 0.33, '“': 0.33, '”': 0.33, '«': 0.42, '»': 0.42,
+  '-': 0.33, '–': 0.5, '—': 1, '/': 0.28, '(': 0.33, ')': 0.33, '&': 0.78, '%': 0.75,
+  i: 0.28, j: 0.28, l: 0.28, t: 0.28, f: 0.33, r: 0.39, I: 0.36,
+  a: 0.5, b: 0.5, c: 0.44, d: 0.5, e: 0.44, g: 0.5, h: 0.5, k: 0.5, n: 0.5,
+  o: 0.5, p: 0.5, q: 0.5, s: 0.39, u: 0.5, v: 0.44, x: 0.44, y: 0.44, z: 0.39,
+  m: 0.72, w: 0.67,
+  A: 0.72, B: 0.67, C: 0.67, D: 0.72, E: 0.61, F: 0.56, G: 0.72, H: 0.72,
+  J: 0.39, K: 0.72, L: 0.61, N: 0.72, O: 0.72, P: 0.56, Q: 0.72, R: 0.67,
+  S: 0.56, T: 0.61, U: 0.72, V: 0.72, X: 0.72, Y: 0.72, Z: 0.61, M: 0.89, W: 0.94,
+};
+const DIGIT_DISPLAY = 0.6;
+const DIGIT_SERIF = 0.5;
+
+/**
+ * Width of `text` in px, from the tables. Weight widens a little; tracking is
+ * counted per gap the way canvas `letterSpacing` applies it.
+ * @param {string} text
+ * @param {{size?:number, face?:'display'|'serif', weight?:number, tracking?:number}} [o]
+ */
+function estimateWidth(text, o) {
+  const s = String(text == null ? '' : text);
+  if (!s) return 0;
+  const opt = o || {};
+  const size = opt.size == null ? 100 : opt.size;
+  const serif = opt.face === 'serif';
+  const table = serif ? W_SERIF : W_DISPLAY;
+  const digit = serif ? DIGIT_SERIF : DIGIT_DISPLAY;
+  let em = 0;
+  for (const ch of s) {
+    const code = ch.codePointAt(0);
+    if (ch >= '0' && ch <= '9') em += digit;
+    else if (table[ch] != null) em += table[ch];
+    else if (code > 0x3ff) em += 0.66;       // Cyrillic/CJK-ish: wider than Latin
+    else em += serif ? 0.5 : 0.58;
+  }
+  // 400 → 1.00, 800 → ~1.035. Bold grotesques widen, they do not just darken.
+  const weight = (opt.weight || 400) >= 700 ? 1.035 : (opt.weight || 400) >= 600 ? 1.02 : 1;
+  const track = (opt.tracking || 0) * Math.max(0, [...s].length - 1);
+  return (em * weight + track) * size;
+}
+
+/**
+ * A measurer backed by a real canvas context. Same signature as
+ * `estimateWidth`, so `archetypeLayout` cannot tell them apart.
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {{display?:string, serif?:string}} [fonts]
+ */
+function makeMeasurer(ctx, fonts) {
+  const f = Object.assign({}, FONTS, fonts || {});
+  return (text, o) => {
+    const opt = o || {};
+    const size = opt.size == null ? 100 : opt.size;
+    try {
+      ctx.font = fontString(opt, size, f);
+      const track = 'letterSpacing' in ctx;
+      if (track) ctx.letterSpacing = `${(opt.tracking || 0) * size}px`;
+      const w = ctx.measureText(String(text == null ? '' : text)).width;
+      if (track) ctx.letterSpacing = '0px';
+      // Older engines ignore letterSpacing; add it back so the fit is honest.
+      return track ? w : w + (opt.tracking || 0) * size * Math.max(0, String(text).length - 1);
+    } catch (e) {
+      return estimateWidth(text, o);
+    }
+  };
+}
+
+function fontString(o, size, fonts) {
+  const face = o.face === 'serif' ? fonts.serif : fonts.display;
+  const style = o.italic ? 'italic ' : '';
+  return `${style}${o.weight || 400} ${size}px ${face}`;
+}
+
+/* ── text fitting ─────────────────────────────────────────────────────── */
+
+/**
+ * Split `words` into exactly `k` ordered lines, minimising the widest line.
+ *
+ * Balanced breaks are what make a two-line name look set rather than wrapped:
+ * "The Midnight / Interrogator" instead of "The / Midnight Interrogator". Names
+ * are two to four words, so the exhaustive search is a few dozen partitions —
+ * no need for anything cleverer, and this way it is provably optimal.
+ *
+ * @param {string[]} words
+ * @param {number} k
+ * @param {(t:string)=>number} width
+ * @returns {string[]}
+ */
+function balanceLines(words, k, width) {
+  const n = words.length;
+  if (n === 0) return [];
+  if (k <= 1) return [words.join(' ')];
+  if (k >= n) return words.slice();
+
+  let best = null;
+  const cuts = new Array(k - 1);
+  const walk = (depth, start) => {
+    if (depth === k - 1) {
+      const lines = [];
+      let prev = 0;
+      for (const c of cuts) { lines.push(words.slice(prev, c).join(' ')); prev = c; }
+      lines.push(words.slice(prev).join(' '));
+      const widths = lines.map(width);
+      const max = Math.max(...widths);
+      const min = Math.min(...widths);
+      // Primary: the widest line. Tiebreak: the tightest ragged edge.
+      if (!best || max < best.max - 1e-9 || (Math.abs(max - best.max) < 1e-9 && max - min < best.spread)) {
+        best = { lines, max, spread: max - min };
+      }
+      return;
+    }
+    // Every line after this cut still needs at least one word: n - c ≥ k-1-depth.
+    for (let c = start; c <= n - (k - 1 - depth); c++) {
+      cuts[depth] = c;
+      walk(depth + 1, c + 1);
+    }
+  };
+  walk(0, 1);
+  return best.lines;
+}
+
+/**
+ * The name, as large as the box allows.
+ *
+ * Searches every line count from 1 to `maxLines`, balances the breaks at each,
+ * and keeps the count that yields the biggest type. Fewer lines wins a near-tie
+ * (`tieBias`) because a name set on one line reads as a title and a name set on
+ * three reads as a paragraph.
+ *
+ * The size is derived from the measurement — `boxWidth / widestLineAtUnitSize`
+ * — so it lands on the exact size that fills the box instead of stepping down
+ * from a guess until something fits.
+ *
+ * @param {string} name
+ * @param {{w:number, h:number}} box
+ * @param {(t:string,o:object)=>number} measure
+ * @param {object} o
+ * @returns {{lines:string[], size:number, lineHeight:number, width:number, height:number, clipped:boolean}}
+ */
+function fitName(name, box, measure, o) {
+  const opt = Object.assign({
+    maxLines: 3, maxSize: 200, minSize: 28, leading: 1.02, tracking: -0.028,
+    weight: 800, face: 'display', tieBias: 0.04,
+  }, o || {});
+  const words = String(name || '').trim().split(/\s+/).filter(Boolean);
+  if (!words.length) return { lines: [], size: 0, lineHeight: 0, width: 0, height: 0, clipped: false };
+
+  const U = 100; // measure once at a unit size; advance width is linear in size
+  const at1 = (t) => measure(t, { size: U, face: opt.face, weight: opt.weight, tracking: opt.tracking });
+  const maxK = Math.max(1, Math.min(opt.maxLines, words.length));
+
+  let best = null;
+  for (let k = 1; k <= maxK; k++) {
+    const lines = balanceLines(words, k, at1);
+    const widest = Math.max(...lines.map(at1), 1e-6);
+    const byWidth = (box.w * U) / widest;
+    const byHeight = box.h / (k * opt.leading);
+    const size = Math.min(byWidth, byHeight, opt.maxSize);
+    if (!best || size > best.size * (1 + opt.tieBias)) best = { k, lines, size, widest };
+  }
+
+  let { lines, size, widest } = best;
+  let clipped = false;
+  if (size < opt.minSize) {          // pathological input: hold the floor, trim instead
+    size = opt.minSize;
+    clipped = true;
+    lines = lines.map((l) => ellipsize(l, { size, face: opt.face, weight: opt.weight, tracking: opt.tracking }, box.w, measure));
+    widest = Math.max(...lines.map(at1), 1e-6);
+  }
+  const width = Math.min(box.w, (widest * size) / U);
+  return {
+    lines,
+    size,
+    lineHeight: size * opt.leading,
+    width,
+    height: lines.length * size * opt.leading,
+    clipped,
+  };
+}
+
+/**
+ * Greedy wrap at a fixed size, capped at `maxLines`, ellipsis on overflow.
+ * @returns {string[]}
+ */
+function wrapLines(text, o, maxW, maxLines, measure) {
+  const words = String(text == null ? '' : text).split(/\s+/).filter(Boolean);
+  if (!words.length || maxLines <= 0) return [];
+  const lines = [];
+  let line = '';
+  let i = 0;
+  for (; i < words.length; i++) {
+    const t = line ? line + ' ' + words[i] : words[i];
+    if (line && measure(t, o) > maxW) {
+      if (lines.length === maxLines - 1) break;   // this line is the last one
+      lines.push(line);
+      line = words[i];
+    } else line = t;
+  }
+  if (line) lines.push(line);
+  const dropped = i < words.length;
+  if (dropped && lines.length) {
+    // Prefer ending on a full stop over trailing off mid-word. "…steady,
+    // unglamorous, actual work. Th…" reads as a rendering bug on a card
+    // somebody is about to post; "…actual work." reads as an edit. Only take
+    // the sentence break if it leaves most of the text — otherwise the ellipsis
+    // is the honest signal that there was more.
+    const whole = lines.join(' ');
+    const stop = Math.max(whole.lastIndexOf('. '), whole.lastIndexOf('! '), whole.lastIndexOf('? '));
+    if (stop > whole.length * 0.55) {
+      const kept = whole.slice(0, stop + 1);
+      const rewrapped = [];
+      let ln = '';
+      for (const w of kept.split(/\s+/)) {
+        const t2 = ln ? ln + ' ' + w : w;
+        if (ln && measure(t2, o) > maxW) { rewrapped.push(ln); ln = w; } else ln = t2;
+      }
+      if (ln) rewrapped.push(ln);
+      if (rewrapped.length <= maxLines) return rewrapped.map((l) => ellipsize(l, o, maxW, measure));
+    }
+    const last = lines[lines.length - 1];
+    lines[lines.length - 1] = ellipsize(last.replace(/[.,;:]?$/, '') + '…', o, maxW, measure);
+  }
+  return lines.map((l) => ellipsize(l, o, maxW, measure));
+}
+
+/** Trim from the end until it fits, then mark the cut. */
+function ellipsize(text, o, maxW, measure) {
+  let s = String(text == null ? '' : text);
+  if (!s || measure(s, o) <= maxW) return s;
+  let lo = 0;
+  let hi = s.length;
+  while (lo < hi) {
+    const mid = Math.ceil((lo + hi) / 2);
+    if (measure(s.slice(0, mid).trim() + '…', o) <= maxW) lo = mid;
+    else hi = mid - 1;
+  }
+  return lo > 0 ? s.slice(0, lo).trim() + '…' : '';
+}
+
+/** Shrink a size until the text fits, never below `min`. */
+function fitSize(text, o, maxW, measure, size, min) {
+  let s = size;
+  while (s > min && measure(text, Object.assign({}, o, { size: s })) > maxW) s *= 0.94;
+  return Math.max(min, s);
+}
+
+/* ── composition tables ───────────────────────────────────────────────── */
+
+/*
+ * Every number below is at the preset's own base size and scales with it, so a
+ * caller can render a 2160×2160 square by passing bigger dimensions and get the
+ * identical composition. `gapAbove` is the space between a block and the one
+ * above it — the stacked flow is computed bottom-up, because the base (footer,
+ * numbers, rule) is fixed and the name takes whatever is left.
+ */
+const CONFIG = {
+  square: {
+    flow: 'stack',
+    pad: 84, padTop: 84, padBottom: 84,
+    eyebrow: { size: 20, tracking: 0.2, gapAbove: 22 },
+    name: { maxSize: 176, minSize: 34, maxLines: 3, leading: 1.02, tracking: -0.028, gapAbove: 24 },
+    tagline: { size: 38, leading: 1.3, maxLines: 2, gapAbove: 22 },
+    blurb: { size: 24, leading: 1.5, maxLines: 3, gapAbove: 32, measure: 0.82 },
+    rule: { gapAbove: 30 },
+    stats: { flow: 'cols', value: 40, label: 15, tracking: 0.14, inner: 12, gapAbove: 24, max: 4 },
+    footer: { size: 21, mark: 26, height: 28, gapAbove: 26 },
+  },
+  story: {
+    flow: 'stack',
+    // The extra top/bottom inset is platform chrome: Instagram and TikTok both
+    // park UI in roughly the first and last 12% of a story. Nothing that must
+    // be read goes there.
+    pad: 96, padTop: 232, padBottom: 250,
+    eyebrow: { size: 23, tracking: 0.2, gapAbove: 26 },
+    name: { maxSize: 210, minSize: 38, maxLines: 4, leading: 1.02, tracking: -0.028, gapAbove: 30 },
+    tagline: { size: 45, leading: 1.32, maxLines: 3, gapAbove: 28 },
+    blurb: { size: 27, leading: 1.55, maxLines: 4, gapAbove: 40, measure: 0.84 },
+    rule: { gapAbove: 40 },
+    stats: { flow: 'cols', value: 46, label: 17, tracking: 0.14, inner: 13, gapAbove: 30, max: 4 },
+    footer: { size: 24, mark: 30, height: 32, gapAbove: 30 },
+  },
+  wide: {
+    // No vertical room to stack a name over four numbers, so the frame splits:
+    // claim on the left, evidence on the right, hairline between them.
+    flow: 'split', splitRatio: 0.62, gutter: 52,
+    pad: 64, padTop: 64, padBottom: 60,
+    eyebrow: { size: 18, tracking: 0.2, gapAbove: 20 },
+    name: { maxSize: 112, minSize: 26, maxLines: 3, leading: 1.03, tracking: -0.028, gapAbove: 22 },
+    tagline: { size: 30, leading: 1.32, maxLines: 2, gapAbove: 20 },
+    blurb: { size: 20, leading: 1.5, maxLines: 2, gapAbove: 22, measure: 1 },
+    rule: { gapAbove: 26 },
+    stats: { flow: 'rows', value: 34, label: 14, tracking: 0.14, inner: 8, gapAbove: 22, rowGap: 20, max: 4 },
+    footer: { size: 19, mark: 24, height: 26, gapAbove: 22 },
+  },
+};
+
+/** Cap height of the display face, used to turn a box top into a baseline. */
+const ASCENT = 0.78;
+
+/** Baselines for a text block laid out from its top edge. */
+function baselinesOf(block) {
+  if (!block || !block.lines || !block.lines.length) return [];
+  return block.lines.map((_, i) => block.y + block.size * ASCENT + i * block.lineHeight);
+}
+
+/* ── layout ───────────────────────────────────────────────────────────── */
+
+/**
+ * Where everything lands. Pure: no canvas, no DOM, no globals, no randomness.
+ *
+ * @param {{name?:string, tagline?:string, blurb?:string,
+ *          stats?:Array<{value:any,label:string}>, seed?:number, preset?:string,
+ *          theme?:string, palette?:object, eyebrow?:string, hasMark?:boolean,
+ *          width?:number, height?:number, redactNames?:string[],
+ *          measure?:function}} spec
+ * @param {string} [preset] overrides spec.preset
+ * @returns {object} boxes, type sizes, scrim plan
+ */
+function archetypeLayout(spec, preset) {
+  const s = spec || {};
+  const key = ARCHETYPE_PRESETS[preset] ? preset
+    : ARCHETYPE_PRESETS[s.preset] ? s.preset : DEFAULT_PRESET;
+  const [BW, BH] = ARCHETYPE_PRESETS[key];
+  const W = s.width || BW;
+  const H = s.height || BH;
+  const S = W / BW;                       // one scale factor for the whole table
+  const C = CONFIG[key];
+  const measure = typeof s.measure === 'function' ? s.measure : estimateWidth;
+  const theme = s.theme === 'light' ? 'light' : 'dark';
+  const T = THEMES[theme];
+  const pal = s.palette && Array.isArray(s.palette.accents) ? s.palette : FALLBACK_PALETTE;
+
+  const sc = (n) => n * S;
+  const frame = {
+    x: sc(C.pad),
+    y: sc(C.padTop),
+    w: W - sc(C.pad) * 2,
+    h: H - sc(C.padTop) - sc(C.padBottom),
+  };
+  const bottom = frame.y + frame.h;
+
+  /* copy, through the privacy gate ------------------------------------- */
+  const red = { redactNames: s.redactNames || [], replacement: 'one project' };
+  const name = safeText(s.name, red) || WORDMARK;
+  const tagline = safeText(s.tagline, Object.assign({ maxLen: 120 }, red));
+  const blurb = safeText(s.blurb, Object.assign({ maxLen: 320 }, red));
+  const eyebrow = safeText(s.eyebrow == null ? EYEBROW : s.eyebrow, red).toUpperCase();
+  const stats = normalizeStats(s.stats, red).slice(0, C.stats.max);
+
+  /* the base: footer, numbers, rule ------------------------------------ */
+  const footerH = sc(C.footer.height);
+  const footer = { x: frame.x, y: bottom - footerH, w: frame.w, h: footerH };
+  const markSize = s.hasMark === false ? 0 : sc(C.footer.mark);
+  const footSize = sc(C.footer.size);
+  footer.mark = markSize ? { x: footer.x, y: footer.y + (footerH - markSize) / 2, w: markSize, h: markSize } : null;
+  footer.wordmark = {
+    x: footer.x + (markSize ? markSize + sc(12) : 0),
+    y: footer.y, h: footerH, size: footSize, weight: 700, text: WORDMARK,
+    baseline: footer.y + footerH * 0.5 + footSize * 0.36,
+  };
+  footer.wordmark.w = measure(WORDMARK, { size: footSize, weight: 700 });
+  const ctaW = measure(CTA, { size: footSize, weight: 600, tracking: 0.02 });
+
+  // The descriptor is the first thing dropped when the row gets tight: the
+  // wordmark and the command have to survive at every size, the explanation is
+  // a bonus the wide frames can afford.
+  const subSize = footSize * 0.92;
+  const subW = measure(WORDMARK_SUB, { size: subSize, weight: 400 });
+  const subX = footer.wordmark.x + footer.wordmark.w + sc(10);
+  footer.sub = (subX + subW <= footer.x + footer.w - ctaW - sc(24))
+    ? {
+      x: subX, y: footer.y, w: subW, h: footerH, size: subSize, weight: 400,
+      text: WORDMARK_SUB, baseline: footer.wordmark.baseline,
+    }
+    : null;
+  footer.cta = {
+    x: footer.x + footer.w - ctaW, y: footer.y, w: ctaW, h: footerH,
+    size: footSize, weight: 600, tracking: 0.02, text: CTA,
+    baseline: footer.wordmark.baseline,
+  };
+
+  const isSplit = C.flow === 'split';
+  const statsBox = layoutStats(stats, C, S, frame);
+
+  let y;                                  // running bottom edge, moving up
+  let rule = null;
+  let cols = null;
+
+  if (!isSplit) {
+    y = footer.y - sc(C.footer.gapAbove);
+    if (statsBox.h > 0) {
+      statsBox.x = frame.x; statsBox.y = y - statsBox.h; statsBox.w = frame.w;
+      placeStatCells(statsBox, C, S, measure);
+      y = statsBox.y - sc(C.stats.gapAbove);
+    }
+    rule = { x: frame.x, y: Math.round(y) - 1, w: frame.w, h: 1 };
+    y = rule.y - sc(C.rule.gapAbove);
+  } else {
+    // Two columns above one full-width footer.
+    const colsBottom = footer.y - sc(C.footer.gapAbove);
+    rule = { x: frame.x, y: Math.round(colsBottom) - 1, w: frame.w, h: 1 };
+    const leftW = Math.round((frame.w - sc(C.gutter)) * C.splitRatio);
+    const rightX = frame.x + leftW + sc(C.gutter);
+    cols = {
+      left: { x: frame.x, y: frame.y, w: leftW, h: rule.y - frame.y },
+      right: { x: rightX, y: frame.y, w: frame.x + frame.w - rightX, h: rule.y - frame.y },
+    };
+    statsBox.x = cols.right.x; statsBox.w = cols.right.w;
+    statsBox.y = rule.y - sc(C.rule.gapAbove) - statsBox.h;
+    placeStatCells(statsBox, C, S, measure);
+    y = rule.y - sc(C.rule.gapAbove);
+  }
+
+  const colW = isSplit ? cols.left.w : frame.w;
+  const colX = frame.x;
+
+  /* the copy stack, still bottom-up ------------------------------------ */
+  const blurbSize = sc(C.blurb.size);
+  // The blurb is the only real prose on the card, so it gets a real measure —
+  // a 900px line of 24px type is a wall, and a wall is what people scroll past.
+  const blurbW = colW * (C.blurb.measure || 1);
+  const blurbLines = blurb
+    ? wrapLines(blurb, { size: blurbSize, face: 'display', weight: 400 }, blurbW, C.blurb.maxLines, measure)
+    : [];
+  const blurbBlock = block(colX, blurbW, blurbLines, blurbSize, blurbSize * C.blurb.leading, { weight: 400, face: 'display' });
+  if (blurbBlock.h) { blurbBlock.y = y - blurbBlock.h; y = blurbBlock.y - sc(C.blurb.gapAbove); }
+
+  const tagSize = sc(C.tagline.size);
+  const tagLines = tagline
+    ? wrapLines(tagline, { size: tagSize, face: 'serif', weight: 400, italic: true }, colW, C.tagline.maxLines, measure)
+    : [];
+  const tagBlock = block(colX, colW, tagLines, tagSize, tagSize * C.tagline.leading, { weight: 400, face: 'serif', italic: true });
+  if (tagBlock.h) { tagBlock.y = y - tagBlock.h; y = tagBlock.y - sc(C.tagline.gapAbove); }
+
+  /* the name takes everything that is left ----------------------------- */
+  const eyeSize = sc(C.eyebrow.size);
+  const eyeH = eyeSize * 1.1;
+  const nameCeiling = frame.y + eyeH + sc(C.eyebrow.gapAbove);
+  const nameBox = { x: colX, w: colW, h: Math.max(sc(C.name.minSize), y - sc(C.name.gapAbove) - nameCeiling) };
+  const fit = fitName(name, nameBox, measure, {
+    maxLines: C.name.maxLines,
+    maxSize: sc(C.name.maxSize),
+    minSize: sc(C.name.minSize),
+    leading: C.name.leading,
+    tracking: C.name.tracking,
+  });
+  const nameBlock = {
+    x: colX, w: colW, lines: fit.lines, size: fit.size, lineHeight: fit.lineHeight,
+    h: fit.height, y: y - sc(C.name.gapAbove) - fit.height,
+    weight: 800, face: 'display', tracking: C.name.tracking, clipped: fit.clipped,
+    box: Object.assign({ y: nameCeiling }, nameBox),
+  };
+  y = nameBlock.y - sc(C.eyebrow.gapAbove);
+
+  // Shrink to fit rather than clip. The eyebrow now carries the subject of the
+  // whole card, so losing its tail to the frame edge would cost more than a
+  // couple of points of size — and on the wide preset the column is narrow.
+  let eyeFitted = eyeSize;
+  let eyeW = eyebrow ? measure(eyebrow, { size: eyeFitted, weight: 600, tracking: C.eyebrow.tracking }) : 0;
+  const eyeFloor = eyeSize * 0.72;
+  while (eyebrow && eyeW > colW && eyeFitted > eyeFloor) {
+    eyeFitted -= 0.5;
+    eyeW = measure(eyebrow, { size: eyeFitted, weight: 600, tracking: C.eyebrow.tracking });
+  }
+  const eyeBlock = {
+    x: colX, y: y - eyeH, w: Math.min(colW, eyeW), h: eyebrow ? eyeH : 0,
+    lines: eyebrow ? [eyebrow] : [], size: eyeFitted, lineHeight: eyeH,
+    weight: 600, face: 'display', tracking: C.eyebrow.tracking,
+  };
+
+  /* the scrim, sized to the ink it has to carry ------------------------ */
+  const groupTop = Math.min(
+    eyeBlock.h ? eyeBlock.y : nameBlock.y,
+    statsBox.h ? statsBox.y : Infinity,
+  );
+  const group = { x: 0, y: groupTop, w: W, h: H - groupTop };
+  const worst = worstArtColor(pal, theme);
+  // Solve the scrim for the WEAKEST ink the card paints with, not the brightest.
+  // Solving for `ink` alone set the plateau at the 0.5 floor, which is ample for
+  // #F4F1EC and left the blurb at 2.51:1 — the file's own promise, broken by the
+  // line that was supposed to keep it.
+  const scrim = scrimPlan({
+    height: H, groupTop, ink: weakestInk([T.ink, T.muted, T.quiet], T.scrim, worst),
+    scrimColor: T.scrim, worstArt: worst,
+  });
+
+  // Each block declares the ink it will actually be painted with, so a contrast
+  // check can pair them correctly. Asserting every ink against every block is
+  // the wrong question — the eyebrow is never painted in `muted` — and asserting
+  // only the brightest ink is how the stat labels came to be shipped below the
+  // bar this file claims to hold.
+  const INK_OF = {
+    eyebrow: T.ink, name: T.ink, tagline: T.ink, blurb: T.muted,
+    stats: T.quiet, footer: T.quiet,
+  };
+  const blocks = [];
+  const push = (nm, b) => {
+    if (b && b.h > 0) blocks.push(Object.assign({ block: nm, ink: INK_OF[nm] || T.ink }, pick(b)));
+  };
+  push('eyebrow', eyeBlock);
+  push('name', nameBlock);
+  push('tagline', tagBlock);
+  push('blurb', blurbBlock);
+  if (rule) blocks.push(Object.assign({ block: 'rule', ink: null }, pick(rule)));
+  push('stats', statsBox);
+  push('footer', footer);
+
+  return {
+    preset: key,
+    width: W, height: H, scale: S, theme,
+    frame, cols, group,
+    ink: { primary: T.ink, muted: T.muted, quiet: T.quiet, rule: T.rule, accent: pal.accents[0], paper: pal.bg || T.paper },
+    palette: pal,
+    seed: (s.seed || 0) >>> 0,
+    eyebrow: eyeBlock,
+    name: nameBlock,
+    tagline: tagBlock,
+    blurb: blurbBlock,
+    rule,
+    stats: statsBox,
+    footer,
+    divider: isSplit && statsBox.h > 0
+      ? { x: Math.round(cols.right.x - sc(C.gutter) / 2), y: statsBox.y, w: 1, h: Math.max(0, rule.y - sc(C.rule.gapAbove) - statsBox.y) }
+      : null,
+    scrim,
+    worstArt: worst,
+    blocks,
+  };
+}
+
+const pick = (b) => ({ x: b.x, y: b.y, w: b.w, h: b.h });
+
+function block(x, w, lines, size, lineHeight, o) {
+  return Object.assign({
+    x, y: 0, w, lines, size, lineHeight, h: lines.length * lineHeight,
+  }, o || {});
+}
+
+/**
+ * Numbers, cleaned. Values are stringified and length-capped — the base of the
+ * card is for round numbers, and anything long enough to wrap is not a number.
+ */
+function normalizeStats(list, red) {
+  if (!Array.isArray(list)) return [];
+  const out = [];
+  for (const st of list) {
+    if (!st) continue;
+    const value = safeText(st.value == null ? '' : String(st.value), red);
+    const label = safeText(st.label == null ? '' : String(st.label), red).toUpperCase();
+    if (!value || value.length > 10) continue;
+    out.push({ value, label: label.slice(0, 14) });
+  }
+  return out;
+}
+
+function layoutStats(cells, C, S, frame) {
+  const cfg = C.stats;
+  const vs = cfg.value * S;
+  const ls = cfg.label * S;
+  const inner = cfg.inner * S;
+  const rowH = vs + inner + ls;
+  const h = !cells.length ? 0
+    : cfg.flow === 'rows' ? cells.length * rowH + (cells.length - 1) * cfg.rowGap * S
+      : rowH;
+  return {
+    x: frame.x, y: 0, w: frame.w, h,
+    flow: cfg.flow, valueSize: vs, labelSize: ls, inner, rowH,
+    tracking: cfg.tracking, cells: cells.map((c) => Object.assign({}, c)),
+    rowGap: (cfg.rowGap || 0) * S,
+  };
+}
+
+/** Place each number inside the stats box, shrinking any value that overruns. */
+function placeStatCells(box, C, S, measure) {
+  const n = box.cells.length;
+  if (!n) return;
+  const gutter = 18 * S;
+  box.cells.forEach((c, i) => {
+    const cw = box.flow === 'rows' ? box.w : box.w / n;
+    const cx = box.flow === 'rows' ? box.x : box.x + cw * i;
+    const cy = box.flow === 'rows' ? box.y + i * (box.rowH + box.rowGap) : box.y;
+    const avail = Math.max(20, cw - (box.flow === 'rows' ? 0 : gutter));
+    c.valueSize = fitSize(c.value, { face: 'display', weight: 800 }, avail, measure, box.valueSize, box.valueSize * 0.6);
+    c.labelSize = box.labelSize;
+    c.label = ellipsize(c.label, { size: c.labelSize, weight: 600, tracking: box.tracking }, avail, measure);
+    c.x = cx; c.y = cy; c.w = cw; c.h = box.rowH;
+    c.valueBaseline = cy + c.valueSize * ASCENT;
+    c.labelBaseline = cy + box.valueSize + box.inner + box.labelSize * ASCENT;
+  });
+}
+
+/**
+ * The gradient that guarantees the type.
+ *
+ * The art gets to be the ground: above the copy the scrim is a whisper, so the
+ * top of the frame is the picture. From just before the first ink to the bottom
+ * edge it holds `alpha`, which is the *computed* minimum for 4.5:1 against the
+ * brightest thing this seed can paint — never a designer's guess, and never
+ * below `floor` so the base still feels grounded on a quiet palette.
+ */
+/**
+ * Of the inks handed in, the one that will struggle most against this ground.
+ * @param {string[]} inks
+ * @param {string} scrimColor
+ * @param {string} worstArt
+ * @returns {string}
+ */
+function weakestInk(inks, scrimColor, worstArt) {
+  const ground = blendOver(worstArt, scrimColor, 1);
+  let worstInk = inks[0];
+  let worstRatio = Infinity;
+  for (const ink of inks) {
+    const r = contrastRatio(ink, ground);
+    if (r < worstRatio) { worstRatio = r; worstInk = ink; }
+  }
+  return worstInk;
+}
+
+function scrimPlan(o) {
+  const H = o.height;
+  const required = requiredScrimAlpha(o.ink, o.scrimColor, o.worstArt, o.ratio || MIN_CONTRAST);
+  const alpha = clampNum(Math.max(required, o.floor == null ? 0.5 : o.floor), 0, 0.97);
+  const hold = clampNum((o.groupTop - H * 0.02) / H, 0, 1);   // full alpha a hair early
+  const fade = clampNum(hold * 0.45, 0, hold);                // where the ramp starts
+  const top = Math.min(0.14, alpha * 0.18);
+  const stops = [[0, top]];
+  if (fade > 0) stops.push([fade, top]);
+  stops.push([hold, alpha], [1, alpha]);
+  return {
+    alpha, required, stops,
+    alphaAt: (y) => alphaAt(stops, clampNum(y / H, 0, 1)),
+  };
+}
+
+function alphaAt(stops, p) {
+  for (let i = 1; i < stops.length; i++) {
+    if (p <= stops[i][0]) {
+      const [p0, a0] = stops[i - 1];
+      const [p1, a1] = stops[i];
+      if (p1 === p0) return a1;
+      return a0 + ((a1 - a0) * (p - p0)) / (p1 - p0);
+    }
+  }
+  return stops[stops.length - 1][1];
+}
+
+/** `codepend-the-swarm-lord-square.png` */
+function archetypeFilename(name, preset) {
+  const slug = String(name || 'archetype').toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'archetype';
+  const p = ARCHETYPE_PRESETS[preset] ? preset : DEFAULT_PRESET;
+  return `codepend-${slug}-${p}.png`;
+}
+
+/* ── drawing ──────────────────────────────────────────────────────────── */
+
+/**
+ * Paint the card.
+ *
+ * @param {CanvasRenderingContext2D} ctx already sized to the preset (any device
+ *   pixel ratio must be applied as a transform by the caller — this function
+ *   never touches the transform)
+ * @param {object} spec see `archetypeLayout`
+ * @param {{artImage?:function, palette?:function, grainPattern?:function,
+ *          fonts?:object, markImage?:function}} deps browser bindings from app.js
+ * @returns {Promise<object>} the layout that was painted
+ */
+async function drawArchetypeCard(ctx, spec, deps) {
+  const d = deps || {};
+  const fonts = Object.assign({}, FONTS, d.fonts || {});
+  const s = spec || {};
+  const seed = (s.seed || 0) >>> 0;
+  const theme = s.theme === 'light' ? 'light' : 'dark';
+
+  let pal = null;
+  try { if (typeof d.palette === 'function') pal = d.palette(seed, theme); } catch (e) { /* art is decoration */ }
+  if (!pal || !Array.isArray(pal.accents) || pal.accents.length < 3) pal = FALLBACK_PALETTE;
+
+  const measure = makeMeasurer(ctx, fonts);
+  const L = archetypeLayout(Object.assign({}, s, {
+    palette: pal, measure, theme, hasMark: typeof d.markImage === 'function',
+  }), spec && spec.preset);
+  const { width: W, height: H } = L;
+
+  /* 1 — ground */
+  ctx.save();
+  ctx.fillStyle = pal.bg || L.ink.paper;
+  ctx.fillRect(0, 0, W, H);
+
+  /* 2 — the art, full bleed, cover-fit */
+  if (typeof d.artImage === 'function') {
+    let img = null;
+    try { img = await d.artImage(seed, 'profile', W, H); } catch (e) { img = null; }
+    if (img) {
+      const ar = (img.width || W) / (img.height || H);
+      let dw = W;
+      let dh = H;
+      if (ar > W / H) { dh = H; dw = H * ar; } else { dw = W; dh = W / ar; }
+      ctx.drawImage(img, (W - dw) / 2, (H - dh) / 2, dw, dh);
+    }
+  }
+
+  /* 3 — the computed scrim */
+  const [sr, sg, sb] = parseColor(THEMES[theme].scrim);
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
+  for (const [p, a] of L.scrim.stops) grad.addColorStop(clampNum(p, 0, 1), `rgba(${sr},${sg},${sb},${round3(a)})`);
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+
+  /* 4 — type */
+  ctx.textBaseline = 'alphabetic';
+  ctx.textAlign = 'left';
+
+  if (L.eyebrow.h) {
+    ctx.fillStyle = L.ink.primary;
+    ctx.globalAlpha = 0.66;
+    setFont(ctx, fonts, { size: L.eyebrow.size, weight: 600 });
+    drawTracked(ctx, L.eyebrow.lines[0], L.eyebrow.x, baselinesOf(L.eyebrow)[0], L.eyebrow.tracking * L.eyebrow.size);
+    ctx.globalAlpha = 1;
+  }
+
+  if (L.name.h) {
+    ctx.fillStyle = L.ink.primary;
+    setFont(ctx, fonts, { size: L.name.size, weight: 800 });
+    const bl = baselinesOf(L.name);
+    L.name.lines.forEach((line, i) => drawTracked(ctx, line, L.name.x, bl[i], L.name.tracking * L.name.size));
+  }
+
+  if (L.tagline.h) {
+    ctx.fillStyle = L.ink.primary;
+    ctx.globalAlpha = 0.86;
+    setFont(ctx, fonts, { size: L.tagline.size, weight: 400, face: 'serif', italic: true });
+    baselinesOf(L.tagline).forEach((b, i) => ctx.fillText(L.tagline.lines[i], L.tagline.x, b));
+    ctx.globalAlpha = 1;
+  }
+
+  if (L.blurb.h) {
+    ctx.fillStyle = L.ink.muted;
+    setFont(ctx, fonts, { size: L.blurb.size, weight: 400 });
+    baselinesOf(L.blurb).forEach((b, i) => ctx.fillText(L.blurb.lines[i], L.blurb.x, b));
+  }
+
+  /* 5 — the base: hairlines and numbers */
+  ctx.fillStyle = L.ink.rule;
+  if (L.rule) ctx.fillRect(L.rule.x, L.rule.y, L.rule.w, L.rule.h);
+  if (L.divider) ctx.fillRect(L.divider.x, L.divider.y, L.divider.w, L.divider.h);
+
+  for (const c of L.stats.cells) {
+    ctx.fillStyle = L.ink.primary;
+    setFont(ctx, fonts, { size: c.valueSize, weight: 800 });
+    ctx.fillText(c.value, c.x, c.valueBaseline);
+    if (!c.label) continue;
+    ctx.fillStyle = L.ink.quiet;
+    setFont(ctx, fonts, { size: c.labelSize, weight: 600 });
+    drawTracked(ctx, c.label, c.x, c.labelBaseline, L.stats.tracking * c.labelSize);
+  }
+
+  /* 6 — signature */
+  if (L.footer.mark && typeof d.markImage === 'function') {
+    let mk = null;
+    try { mk = await d.markImage(Math.round(L.footer.mark.w)); } catch (e) { mk = null; }
+    if (mk) ctx.drawImage(mk, L.footer.mark.x, L.footer.mark.y, L.footer.mark.w, L.footer.mark.h);
+  }
+  ctx.fillStyle = L.ink.primary;
+  setFont(ctx, fonts, { size: L.footer.wordmark.size, weight: 700 });
+  ctx.fillText(WORDMARK, L.footer.wordmark.x, L.footer.wordmark.baseline);
+  ctx.fillStyle = L.ink.quiet;
+  if (L.footer.sub) {
+    setFont(ctx, fonts, { size: L.footer.sub.size, weight: 400 });
+    ctx.fillText(WORDMARK_SUB, L.footer.sub.x, L.footer.sub.baseline);
+  }
+  setFont(ctx, fonts, { size: L.footer.cta.size, weight: 600 });
+  drawTracked(ctx, CTA, L.footer.cta.x, L.footer.cta.baseline, L.footer.cta.tracking * L.footer.cta.size);
+
+  /* 7 — the same grain the page wears */
+  if (typeof d.grainPattern === 'function') {
+    try {
+      const pat = d.grainPattern(ctx, seed);
+      if (pat) {
+        ctx.globalAlpha = 0.055;
+        ctx.globalCompositeOperation = 'overlay';
+        ctx.fillStyle = pat;
+        ctx.fillRect(0, 0, W, H);
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = 1;
+      }
+    } catch (e) { /* grain is cosmetic */ }
+  }
+
+  ctx.restore();
+  return L;
+}
+
+function setFont(ctx, fonts, o) {
+  ctx.font = fontString(o, o.size, fonts);
+}
+
+/**
+ * Tracked text. Canvas letter-spacing is recent; where it is missing we walk
+ * the string and advance by hand, which is exact rather than the old trick of
+ * shoving spaces between glyphs.
+ */
+function drawTracked(ctx, text, x, y, px) {
+  const s = String(text == null ? '' : text);
+  if (!s) return;
+  if (!px) { ctx.fillText(s, x, y); return; }
+  if ('letterSpacing' in ctx) {
+    ctx.letterSpacing = `${px}px`;
+    ctx.fillText(s, x, y);
+    ctx.letterSpacing = '0px';
+    return;
+  }
+  let cx = x;
+  for (const ch of s) {
+    ctx.fillText(ch, cx, y);
+    cx += ctx.measureText(ch).width + px;
+  }
+}
+
+const round3 = (n) => Math.round(n * 1000) / 1000;
+
+const __artDefault = drawArchetypeCard;
+
+return {
+  drawArchetypeCard:   typeof drawArchetypeCard   !== 'undefined' ? drawArchetypeCard   : null,
+  archetypeLayout:     typeof archetypeLayout     !== 'undefined' ? archetypeLayout     : null,
+  archetypeFilename:   typeof archetypeFilename   !== 'undefined' ? archetypeFilename   : null,
+  safeText:            typeof safeText            !== 'undefined' ? safeText            : null,
+  ARCHETYPE_PRESETS:   typeof ARCHETYPE_PRESETS   !== 'undefined' ? ARCHETYPE_PRESETS   : null,
+};
+})();
+
 /* ---- payload ---- */
 globalThis.CODEPEND_DATA = JSON.parse(document.getElementById('codepend-data').textContent);
 
@@ -5055,7 +6396,22 @@ function archetypeMemory() {
   };
 }
 const ARCHETYPE = archetypeMemory();
-if (ARCHETYPE) BY_ID.set(ARCHETYPE.id, ARCHETYPE);
+if (ARCHETYPE) {
+  BY_ID.set(ARCHETYPE.id, ARCHETYPE);
+  // detect.js usually emits the archetype as an ordinary memory too, and
+  // buildFeed() then declines to splice the synthesized one. That copy went
+  // through norm(), which knows nothing about `isArchetype` or `tagline` — so
+  // the card the feed actually showed was the archetype dressed as memory
+  // number six, with the generic ⇪ on it. One identity, wherever it came from.
+  for (const m of MEMORIES) {
+    if (m.id !== ARCHETYPE.id && m.type !== 'archetype') continue;
+    m.isArchetype = true;
+    if (!m.tagline) m.tagline = ARCHETYPE.tagline || (m.stat && m.stat.label) || null;
+    // The name and the line are the card; a stat block would set the name at
+    // 130px twice over.
+    m.stat = null;
+  }
+}
 
 /* ── feed ordering (MEMORY-CATALOG §7) ────────────────────────────────── */
 
@@ -5278,7 +6634,15 @@ function buildCard(m, i) {
 
   card.appendChild(body);
 
-  if (m.shareable) {
+  // The archetype does not get the generic ⇪. Its image comes from one place —
+  // the #/me screen — so the card carries a door instead of a duplicate.
+  if (m.isArchetype) {
+    const cta = h('a', {
+      class: 'card__cta', href: '#/me',
+      'aria-label': `Open ${m.title || 'your archetype'} full screen and save it`,
+    }, `${m.isCover ? 'Open your archetype' : 'See it full screen'} <span aria-hidden="true">→</span>`);
+    body.appendChild(cta);
+  } else if (m.shareable) {
     const b = h('button', { class: 'card__share', type: 'button', 'aria-label': `Make a share card from “${m.title || m.type}”` }, '<span aria-hidden="true">⇪</span>');
     b.addEventListener('click', () => openShare(m));
     card.appendChild(b);
@@ -5522,6 +6886,7 @@ function remountAllArt() {
     const s = el.dataset.seed; if (s) el.style.cssText = el.style.cssText.replace(/--a-[13bg2]+:[^;]*;?/g, '') + ';' + paletteStyle(Number(s) >>> 0);
   });
   if (shareState.memory) drawShare();
+  if (meEl && meEl.open) { $('#meart').textContent = ''; paintMe(); refreshMeCard(); }
   paintMark();
 }
 
@@ -5997,7 +7362,10 @@ function slideMarkup(s) {
   if (s.finale) {
     const a = PROFILE.archetype || {};
     const cells = finaleCells();
-    const vid = VIDEO_OK ? '<button class="btn btn--solid js-wvideo" type="button">Save video</button>' : '';
+    // The finale IS the archetype, so the primary verb here is the archetype's.
+    // "Share card" used to sit in this slot and open the generic sheet; it now
+    // hands off to the screen that owns the artifact.
+    const vid = VIDEO_OK ? '<button class="btn js-wvideo" type="button">Save video</button>' : '';
     return `<div class="wslide__in wslide__in--finale">
       <div class="eyebrow">what that makes you</div>
       <h2 class="wslide__name">${esc(a.name || 'Your year with it')}</h2>
@@ -6005,8 +7373,8 @@ function slideMarkup(s) {
       ${a.blurb ? `<p class="wslide__text">${esc(a.blurb)}</p>` : ''}
       <div class="wslide__grid">${cells.map(([b, l]) => `<div class="wslide__cell"><b>${esc(b)}</b><span>${esc(l)}</span></div>`).join('')}</div>
       <div class="wslide__cta">
+        <button class="btn btn--solid js-wme" type="button">Save archetype</button>
         ${vid}
-        <button class="btn${vid ? '' : ' btn--solid'} js-wshare" type="button">Share card</button>
         <button class="btn js-wreplay" type="button">Replay</button>
       </div>
     </div>`;
@@ -6054,7 +7422,7 @@ function buildWrapped() {
   slidesEl.addEventListener('click', (e) => {
     const t = e.target.closest('button');
     if (!t) return;
-    if (t.classList.contains('js-wshare')) { closeWrapped(); openShare(ARCHETYPE || SLIDES[1]); }
+    if (t.classList.contains('js-wme')) { closeWrapped(); openMe(null); }
     if (t.classList.contains('js-wreplay')) goSlide(0, 1);
     if (t.classList.contains('js-wvideo')) exportVideo();
   });
@@ -6157,7 +7525,14 @@ function wireWrapped() {
   $('.js-wprev').addEventListener('click', () => goSlide(wi - 1, -1));
   $('.js-wnext').addEventListener('click', () => goSlide(wi + 1, 1));
   wrapEl.addEventListener('cancel', (e) => { e.preventDefault(); closeWrapped(); });
-  wrapEl.addEventListener('close', () => { document.body.style.overflow = ''; clearTimeout(wTimer); });
+  // `close` is queued, not synchronous. Wrapped's finale closes the story and
+  // opens #/me in the same tick, so this handler used to land *after* openMe()
+  // had locked the body and quietly unlock it again — the album scrolled around
+  // behind the archetype screen. Only release the lock if nothing still holds it.
+  wrapEl.addEventListener('close', () => {
+    if (!meEl.open) document.body.style.overflow = '';
+    clearTimeout(wTimer);
+  });
 
   const stage = $('#wstage');
   let holdT = null, sx = 0, sy = 0;
@@ -6445,8 +7820,18 @@ const shareState = { memory: null, preset: 'wide', hideProject: false, opener: n
 const F_DISPLAY = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
 const F_SERIF = '"Iowan Old Style", Georgia, "Times New Roman", serif';
 
+/**
+ * The generic sheet, for quotes, stats and charts.
+ *
+ * It used to take the archetype as well — one composition trying to serve five
+ * card shapes and the thing people actually post. The archetype has its own
+ * screen now, so anything that still asks the sheet for it is redirected rather
+ * than given a second, worse version of the same image.
+ */
 function openShare(m) {
-  shareState.memory = m || ARCHETYPE || MEMORIES[0];
+  const mem = m || ARCHETYPE || MEMORIES[0];
+  if (mem && mem.isArchetype) { openMe(document.activeElement); return; }
+  shareState.memory = mem;
   shareState.opener = document.activeElement;
   if (!SHEET.open) { try { SHEET.showModal(); } catch (e) { SHEET.setAttribute('open', ''); } }
   drawShare();
@@ -6570,8 +7955,13 @@ function shareCopy(m, opts) {
     out.line = (dupes ? clean(m.body) : title) || clean(m.body) || title;
   } else if (m.quote && m.quote.text) {
     const q = clean(trimQuote(m.quote.text));
-    if (q) out.quote = { text: q, who: m.quote.who === 'agent' ? 'it said' : 'you said' };
-    else out.line = clean(m.title);
+    if (q) {
+      out.quote = { text: q, who: m.quote.who === 'agent' ? 'it said' : 'you said' };
+      // The body is the punchline on quote cards ("The tools changed. You
+      // didn't.", "Sometimes you were."). The feed always shows it, so dropping
+      // it from the exported PNG turns the joke into an unexplained quotation.
+      out.line = clean(m.body) || clean(m.title);
+    } else out.line = clean(m.title) || clean(m.body);
   } else {
     out.headline = clean(m.title);
     out.line = clean(m.tagline) || clean(m.body);
@@ -6603,17 +7993,11 @@ async function drawShare() {
   const scrim = (cs.getPropertyValue('--scrim-color').trim() || '5 6 10').split(/\s+/).join(',');
   const paper = cs.getPropertyValue('--paper').trim() || '#06070A';
   const wideMode = shareState.preset === 'wide';
-  // The archetype is the hook — "I'm The Swarm Lord, what are you?" is the
-  // sentence that makes a second person run the command. When it is the subject
-  // of the card it gets the whole frame: full-bleed art, one vertical scrim, and
-  // a name set as large as the box allows.
-  const heroMode = !!m.isArchetype;
 
   ctx.fillStyle = pal.bg || paper;
   ctx.fillRect(0, 0, W, H);
 
-  const kind = m.isArchetype ? 'profile' : m.kind;
-  const img = await artImage(m.seed >>> 0, kind, wideMode ? 900 : 1080, wideMode ? 675 : 1350);
+  const img = await artImage(m.seed >>> 0, m.kind, wideMode ? 900 : 1080, wideMode ? 675 : 1350);
   if (stale()) return;
   if (img) {
     ctx.save();
@@ -6622,13 +8006,13 @@ async function drawShare() {
     let dw = W, dh = H, dx = 0, dy = 0;
     if (ar > tar) { dh = H; dw = H * ar; dx = (W - dw) / 2; }
     else { dw = W; dh = W / ar; dy = (H - dh) / 2; }
-    if (wideMode && !heroMode) { dw = W * 0.62; dh = dw / ar; dx = W - dw; dy = (H - dh) / 2; }
+    if (wideMode) { dw = W * 0.62; dh = dw / ar; dx = W - dw; dy = (H - dh) / 2; }
     ctx.drawImage(img, dx, dy, dw, dh);
     ctx.restore();
   }
 
   // scrim
-  const sideScrim = wideMode && !heroMode;
+  const sideScrim = wideMode;
   const g = sideScrim ? ctx.createLinearGradient(0, 0, W, 0) : ctx.createLinearGradient(0, 0, 0, H);
   if (sideScrim) {
     g.addColorStop(0, `rgba(${scrim},0.97)`);
@@ -6647,7 +8031,7 @@ async function drawShare() {
 
   const S = W / (wideMode ? 1200 : 1080);          // one scale factor for the lockup
   const PAD = (wideMode ? 76 : 88) * S;
-  const colW = (wideMode && !heroMode ? W * 0.58 : W) - PAD * 2;
+  const colW = (wideMode ? W * 0.58 : W) - PAD * 2;
   const copy = shareCopy(m);
 
   // mark + wordmark
@@ -6674,12 +8058,6 @@ async function drawShare() {
   ctx.fillText(rightTxt, PAD + colW - ctx.measureText(rightTxt).width, y + 34 * S);
 
   y -= 44 * S;
-
-  if (heroMode) {
-    drawArchetypeLockup(ctx, { W, H, S, PAD, colW, y, ink0, ink2, pal, wideMode });
-    grainOver(ctx, W, H, m.seed >>> 0);
-    return;
-  }
 
   if (copy.line) {
     ctx.fillStyle = ink0;
@@ -6758,90 +8136,6 @@ function grainOver(ctx, W, H, seed) {
   } catch (e) { /* pattern is cosmetic */ }
 }
 
-/**
- * The archetype lockup, built bottom-up from `o.y` (just above the footer rule):
- * two supporting numbers, the tagline, then the name at whatever size the
- * remaining box allows. Readable at thumbnail size is the only requirement that
- * matters here — in a feed the name is all anyone will resolve.
- */
-function drawArchetypeLockup(ctx, o) {
-  const { S, PAD, colW, ink0, ink2, wideMode } = o;
-  const a = PROFILE.archetype || {};
-  const name = a.name || 'codepend';
-  const tag = isRisky(a.tagline) ? '' : (a.tagline || '');
-  const cells = finaleCells().slice(0, 2);
-  const track = 'letterSpacing' in ctx;
-  let y = o.y;
-
-  // everything must clear the wordmark at the top
-  const ceiling = PAD + 74 * S;
-
-  if (cells.length) {
-    let cx = PAD;
-    for (const [v, l] of cells) {
-      ctx.fillStyle = ink2;
-      ctx.font = `600 ${(wideMode ? 17 : 20) * S}px ${F_DISPLAY}`;
-      if (track) ctx.letterSpacing = `${2 * S}px`;
-      ctx.fillText(String(l).toUpperCase(), cx, y);
-      if (track) ctx.letterSpacing = '0px';
-      ctx.fillStyle = ink0;
-      ctx.font = `800 ${(wideMode ? 42 : 54) * S}px ${F_DISPLAY}`;
-      ctx.fillText(String(v), cx, y - (wideMode ? 26 : 32) * S);
-      cx += colW / 2;
-    }
-    y -= (wideMode ? 86 : 104) * S;
-  }
-
-  let tagLines = [];
-  const tagSize = (wideMode ? 34 : 42) * S;
-  const tagLead = tagSize * 1.32;
-  if (tag) {
-    ctx.font = `italic 400 ${tagSize}px ${F_SERIF}`;
-    tagLines = wrapText(ctx, tag, colW, wideMode ? 2 : 3);
-  }
-
-  // Give the name whatever vertical room is left after the fixed blocks, and
-  // start from a size no name will ever fit at — so the loop grows into the
-  // frame instead of settling for the first size that happens to work. A short
-  // archetype ("The Swarm Lord") should fill the card.
-  const eyebrowH = 48 * S;
-  const room = y - tagLines.length * tagLead - (tagLines.length ? 20 * S : 0) - eyebrowH - ceiling;
-  let size = (wideMode ? 210 : 230) * S;
-  let lines = [];
-  for (;;) {
-    ctx.font = `800 ${size}px ${F_DISPLAY}`;
-    lines = wrapText(ctx, name, colW, 5);
-    const overWide = lines.some((l) => ctx.measureText(l).width > colW);
-    if ((!overWide && lines.length * size * 1.03 <= room) || size <= 30 * S) break;
-    size *= 0.93;
-  }
-
-  if (tagLines.length) {
-    ctx.fillStyle = ink0;
-    ctx.globalAlpha = 0.84;
-    ctx.font = `italic 400 ${tagSize}px ${F_SERIF}`;
-    for (let i = tagLines.length - 1; i >= 0; i--) { ctx.fillText(tagLines[i], PAD, y); y -= tagLead; }
-    ctx.globalAlpha = 1;
-    y -= 16 * S;
-  }
-
-  ctx.fillStyle = ink0;
-  ctx.font = `800 ${size}px ${F_DISPLAY}`;
-  if (track) ctx.letterSpacing = `${-size * 0.028}px`;
-  for (let i = lines.length - 1; i >= 0; i--) { ctx.fillText(lines[i], PAD, y); y -= size * 1.03; }
-  if (track) ctx.letterSpacing = '0px';
-  y -= 12 * S;
-
-  const eyebrow = 'WHAT YOU ARE';
-  ctx.fillStyle = ink0;
-  ctx.globalAlpha = 0.6;
-  ctx.font = `600 ${20 * S}px ${F_DISPLAY}`;
-  if (track) ctx.letterSpacing = `${2.8 * S}px`;
-  ctx.fillText(track ? eyebrow : spaced(eyebrow), PAD, Math.max(y, ceiling));
-  if (track) ctx.letterSpacing = '0px';
-  ctx.globalAlpha = 1;
-}
-
 /** Canvas has no letter-spacing in older engines; fake the eyebrow tracking. */
 function spaced(s) { return s.split('').join(' '); }
 
@@ -6872,7 +8166,6 @@ function wireShare() {
     drawShare();
   }));
   $('#hideproj').addEventListener('change', (e) => { shareState.hideProject = e.target.checked; drawShare(); });
-  $$('.js-share').forEach((b) => b.addEventListener('click', () => openShare(ARCHETYPE || MEMORIES[0])));
 
   $('.js-dl').addEventListener('click', () => {
     const note = $('#snote');
@@ -6906,6 +8199,281 @@ function wireShare() {
     }
   });
 }
+
+/* ── #/me — the archetype, and the one button that takes it away ───────────
+
+   The archetype is the sentence people repeat at each other ("I'm The Swarm
+   Lord, what are you?"), and it used to be card six of thirty with the same ⇪
+   every quote card carries. It has a screen now, routed at `#/me` so the URL
+   can be sent on its own, and exactly one verb: Save archetype.
+
+   Everything below draws in this page. Nothing is uploaded, and what lands on
+   the image is deliberately smaller than what is on the screen: the name, the
+   line, round numbers, the wordmark. No project names, no quotes, no paths.
+   ------------------------------------------------------------------------ */
+
+/**
+ * Project names are the one thing the archetype copy can leak on its own: The
+ * Serial Monogamist's blurb is built out of `topProject`, and redaction leaves
+ * directory names alone because they are not paths. `shareCopy` already does
+ * this substitution for ordinary memories; the archetype needs its own list
+ * because it carries no `project` field to substitute against.
+ */
+const PROJECT_NAMES = (() => {
+  const seen = new Set();
+  const add = (p) => { const s = String(p == null ? '' : p).trim(); if (s.length > 2) seen.add(s); };
+  add(PROFILE.topProject);
+  for (const m of MEMORIES) { add(m.project); if (m.quote) add(m.quote.project); }
+  return Array.from(seen).sort((a, b) => b.length - a.length);
+})();
+
+function deproject(t) {
+  let s = String(t == null ? '' : t);
+  for (const p of PROJECT_NAMES) if (s.indexOf(p) >= 0) s = s.split(p).join('one project');
+  return s;
+}
+
+/**
+ * The share-safe archetype. `--redact paranoid` has already emptied the risky
+ * inputs upstream; this is the last filter, and it must still leave a card
+ * worth posting — the name alone is the point, the rest is supporting cast.
+ */
+function archetypeCopy() {
+  const a = PROFILE.archetype || {};
+  const safe = (t) => { const s = deproject(t); return isRisky(s) ? '' : s; };
+  return {
+    name: a.name || 'codepend',
+    tagline: safe(a.tagline),
+    blurb: safe(a.blurb),
+    seed: (typeof a.seed === 'number' ? a.seed : hash32('archetype')) >>> 0,
+    stats: finaleCells().map(([value, label]) => {
+      // Tuple and record at once. archetype-card.js is being written to a
+      // contract that names `stats` but not its shape, and a cell that answers
+      // to both `[v, l]` and `{value, label}` costs nothing and cannot be the
+      // reason the card comes out blank.
+      const cell = [String(value), String(label)];
+      cell.value = String(value);
+      cell.label = String(label);
+      return cell;
+    }),
+  };
+}
+
+/* The dedicated card renderer, when render.js has inlined it. Same bridge
+   video.js gets: one global, one factory-shaped object, no imports — app.js is
+   inlined as a single module script and a static import would have nothing to
+   resolve against from file://. If it is absent, the local fallback below draws
+   the card and the button behaves identically. */
+const CARD_API = globalThis.CODEPEND_ARCHETYPE_CARD || null;
+const ME_PRESETS = (CARD_API && CARD_API.ARCHETYPE_PRESETS)
+  || { square: [1080, 1080], story: [1080, 1920], wide: [1200, 675] };
+const ME_ORDER = ['square', 'story', 'wide'];
+
+const meEl = $('#me');
+const meState = { preset: 'square', url: null, blob: null, opener: null, seq: 0, busy: false };
+
+/**
+ * Draw one archetype card and hand back a PNG blob.
+ * @param {'square'|'story'|'wide'} preset
+ * @returns {Promise<Blob|null>}
+ */
+async function renderArchetypePNG(preset) {
+  const dims = ME_PRESETS[preset] || ME_PRESETS.square;
+  const W = dims[0], H = dims[1];
+  const cv = document.createElement('canvas');
+  cv.width = W; cv.height = H;
+  const ctx = cv.getContext('2d');
+  if (!ctx) return null;
+  const c = archetypeCopy();
+  const spec = {
+    name: c.name, tagline: c.tagline, blurb: c.blurb, stats: c.stats,
+    seed: c.seed, preset, theme: themeNow(),
+  };
+  const deps = {
+    artImage,
+    palette: paletteOf,
+    grainPattern,
+    markImage,                     // the ember, for the card's own wordmark
+    fonts: { display: F_DISPLAY, serif: F_SERIF },
+  };
+  // One composition, or none. There used to be a built-in fallback here, and it
+  // was the more dangerous of the two failure modes: the module went missing
+  // from the bundle once already, and the page quietly drew a different,
+  // unaudited picture with no error and no visual tell. A card that does not
+  // appear is a bug someone reports; a card that appears and was never reviewed
+  // is a bug that ships on somebody's timeline.
+  if (!CARD_API || typeof CARD_API.drawArchetypeCard !== 'function') {
+    throw new Error('archetype-card.js is missing from this build');
+  }
+  await CARD_API.drawArchetypeCard(ctx, spec, deps);
+  return new Promise((res) => {
+    try { cv.toBlob((b) => res(b || null), 'image/png'); } catch (e) { res(null); }
+  });
+}
+
+
+function archetypeFilename() {
+  const slug = String((PROFILE.archetype && PROFILE.archetype.name) || 'archetype')
+    .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'archetype';
+  return `codepend-${slug}-${meState.preset}.png`;
+}
+
+/** Drop the previous blob before a new one replaces it. */
+function releaseMe() {
+  if (meState.url) { try { URL.revokeObjectURL(meState.url); } catch (e) { /* already gone */ } }
+  meState.url = null;
+  meState.blob = null;
+}
+
+/**
+ * Draw the card and attach it to the button.
+ *
+ * The download is a real `<a download>` with the file already on it, clicked by
+ * the person. Nothing here calls `a.click()` and reports success — that is what
+ * the video export shipped once, and on Safari the click lands after the user
+ * gesture has expired, so the UI said "Saved" while nothing had been.
+ */
+async function refreshMeCard() {
+  const mine = ++meState.seq;
+  const a = $('#mesave');
+  const label = $('#mesavet');
+  const note = $('#menote');
+  const prev = $('#meprev');
+  meState.busy = true;
+  a.removeAttribute('href');
+  a.setAttribute('aria-disabled', 'true');
+  if (label) label.textContent = 'Drawing your card…';
+  note.textContent = 'Drawing your card in this page. Nothing is uploaded.';
+
+  let blob = null;
+  try { blob = await renderArchetypePNG(meState.preset); }
+  catch (e) { console.warn('archetype card failed', e); blob = null; }
+  if (mine !== meState.seq) return null;               // a preset switch overtook us
+  meState.busy = false;
+
+  if (!blob) {
+    if (label) label.textContent = 'Save archetype';
+    note.textContent = 'This browser would not draw the image. Wrapped and the video export still work.';
+    return null;
+  }
+
+  releaseMe();
+  meState.blob = blob;
+  meState.url = URL.createObjectURL(blob);
+  a.href = meState.url;
+  a.download = archetypeFilename();
+  a.removeAttribute('aria-disabled');
+  if (label) label.textContent = 'Save archetype';
+  if (prev) { prev.src = meState.url; prev.hidden = false; }
+  const dims = ME_PRESETS[meState.preset] || ME_PRESETS.square;
+  const kb = blob.size < 1048576
+    ? `${Math.round(blob.size / 1024)} KB`
+    : `${(blob.size / 1048576).toFixed(1)} MB`;
+  note.textContent = `${dims[0]} × ${dims[1]} PNG, ${kb}. Drawn here, never uploaded — the image carries the name, the line, the numbers and the wordmark, nothing else.`;
+  globalThis.CODEPEND_LAST_ARCHETYPE = {
+    size: blob.size, type: blob.type, preset: meState.preset,
+    width: dims[0], height: dims[1], filename: a.download,
+  };
+  return blob;
+}
+
+function paintMe() {
+  const c = archetypeCopy();
+  meEl.setAttribute('style', paletteStyle(c.seed));
+  $('#mename').textContent = c.name;
+  const tg = $('#metag');
+  tg.textContent = c.tagline; tg.hidden = !c.tagline;
+  const bl = $('#meblurb');
+  bl.textContent = c.blurb; bl.hidden = !c.blurb;
+  $('#mestats').innerHTML = c.stats
+    .map((s) => `<div class="me__cell"><b>${esc(s.value)}</b><span>${esc(s.label)}</span></div>`).join('');
+  const art = $('#meart');
+  if (!art.firstChild) {
+    art.innerHTML = labelled(artSVG(c.seed, 'profile', { w: 1000, h: 1600, blur: true }), c.seed, 'profile');
+  }
+}
+
+/** @param {Element|null} from the control to hand focus back to on close */
+function openMe(from) {
+  if (!ARCHETYPE) return;
+  // boot() runs route() three times (once now, twice more after the DOM has
+  // settled, for deep links into the feed). Re-opening would throw away a card
+  // already drawn and reset the format back to square under the user.
+  if (meEl.open) return;
+  meState.opener = from || document.activeElement;
+  if (wrapEl.open) closeWrapped();
+  if (SHEET.open) closeShare();
+  paintMe();
+  if (!meEl.open) { try { meEl.showModal(); } catch (e) { meEl.setAttribute('open', ''); } }
+  document.body.style.overflow = 'hidden';
+  if (location.hash !== '#/me') history.replaceState(null, '', '#/me');
+  // Draw immediately, so the button has the file on it before anyone reaches
+  // for it. One click, their own gesture, no second step.
+  refreshMeCard();
+}
+
+function closeMe() {
+  if (meEl.open) meEl.close();
+  document.body.style.overflow = '';
+  if (location.hash === '#/me') history.replaceState(null, '', location.pathname + location.search);
+  if (meState.opener && meState.opener.focus) meState.opener.focus();
+}
+
+async function copyArchetype() {
+  const note = $('#menote');
+  try {
+    // The blob is kept rather than re-read off its own object URL. Reading a
+    // `blob:` address back is still a request, and this page makes none.
+    if (!meState.blob) throw new Error('not ready');
+    if (!navigator.clipboard || !window.ClipboardItem) throw new Error('unsupported');
+    await navigator.clipboard.write([new ClipboardItem({ 'image/png': meState.blob })]);
+    note.textContent = 'Copied. Paste it anywhere.';
+  } catch (e) {
+    note.textContent = 'Copying images is not available here — use Save archetype, or long-press the preview.';
+  }
+}
+
+function wireMe() {
+  $$('.js-me').forEach((b) => b.addEventListener('click', () => openMe(b)));
+  if (!ARCHETYPE) {
+    $$('.js-me').forEach((b) => { b.hidden = true; });
+    return;
+  }
+  $$('.js-meclose', meEl).forEach((b) => b.addEventListener('click', closeMe));
+  meEl.addEventListener('cancel', (e) => { e.preventDefault(); closeMe(); });
+  meEl.addEventListener('close', () => { if (!wrapEl.open) document.body.style.overflow = ''; });
+  $('.js-mewrapped', meEl).addEventListener('click', () => { closeMe(); openWrapped(null); });
+  $$('.seg', meEl).forEach((b) => b.addEventListener('click', () => {
+    const p = b.dataset.mepreset;
+    if (!p || !ME_PRESETS[p]) return;
+    $$('.seg', meEl).forEach((x) => x.classList.toggle('is-on', x === b));
+    meState.preset = p;
+    refreshMeCard();
+  }));
+  $('#mesave').addEventListener('click', (e) => {
+    const a = $('#mesave');
+    if (!a.getAttribute('href')) {
+      e.preventDefault();
+      $('#menote').textContent = 'Still drawing — one moment.';
+      if (!meState.busy) refreshMeCard();
+      return;
+    }
+    // The browser is doing the saving from here; say so only after it was asked.
+    setTimeout(() => { $('#menote').textContent = 'Asked your browser to save it. Post it as it is.'; }, 400);
+  });
+  $('.js-mecopy', meEl).addEventListener('click', copyArchetype);
+}
+
+/* Drivable from a console or a test harness without clicking through the page.
+   Read-only status; nothing here uploads. */
+globalThis.codependArchetype = {
+  presets: () => Object.assign({}, ME_PRESETS),
+  order: () => ME_ORDER.slice(),
+  copy: () => archetypeCopy(),
+  render: (preset) => renderArchetypePNG(preset || 'square'),
+  open: () => openMe(null),
+  get last() { return globalThis.CODEPEND_LAST_ARCHETYPE || null; },
+};
 
 /* ── theme, dock, routing, boot ───────────────────────────────────────── */
 
@@ -6966,6 +8534,11 @@ function wireChrome() {
 
 function route() {
   const hh = location.hash;
+  // `#/me` is a real address — it is the URL somebody sends when they host this
+  // page, so it has to survive a cold load, the back button and a link from
+  // inside the feed. Anything else closes the screen again.
+  if (hh === '#/me') { openMe(null); return; }
+  if (meEl && meEl.open) closeMe();
   if (hh === '#/wrapped') { openWrapped(null); return; }
   const m = /^#\/m\/(.+)$/.exec(hh);
   if (m) {
@@ -6987,6 +8560,7 @@ function boot() {
   wireChrome();
   wireWrapped();
   wireShare();
+  wireMe();
   addEventListener('hashchange', route);
   route();
   // Deep links to a card need the DOM settled first.
@@ -7007,7 +8581,7 @@ try {
        </div>`);
     feedEl.appendChild(blank);
     $('#filters').hidden = true;
-    $$('.js-wrapped').forEach((b) => { b.hidden = true; });
+    $$('.js-wrapped, .js-me').forEach((b) => { b.hidden = true; });
     paintMark();
     wireChrome();
   } else {
