@@ -40,6 +40,11 @@ jobs:
           node-version: '22'
           registry-url: 'https://registry.npmjs.org'
 
+      # Trusted publishing support landed in npm 11.5.1. Node 22 currently
+      # ships an older npm, so upgrade the CLI before requesting the OIDC token.
+      - name: use npm with trusted publishing support
+        run: npm install --global npm@11
+
       # A tag is not a review. Nothing ships that has not just passed on the machine
       # that is about to publish it.
       - name: lint and test
@@ -79,5 +84,3 @@ jobs:
       - name: publish
         if: startsWith(github.ref, 'refs/tags/v') && inputs.dry_run != true
         run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
