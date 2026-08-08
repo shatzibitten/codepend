@@ -17,65 +17,27 @@ One command, one HTML page, nothing uploaded. **[See it without installing →](
 [![dependencies](https://img.shields.io/badge/dependencies-0-2ea043)](package.json)
 [![license](https://img.shields.io/badge/license-MIT-555)](LICENSE)
 
-<!--
-  MAINTAINER — capture list. Drop the files in docs/assets/, then delete this
-  comment and uncomment the <img> blocks below. Until then this is the spec.
-
-  Rule for every asset: run `npx codepend --redact paranoid` first, capture
-  THAT, then check the frame for project names you would not want on the front
-  page of Hacker News.
-
-  1. docs/assets/wrapped.mp4 — THE PRIMARY ASSET. 1080x1920 (9:16), H.264,
-     <= 60 s, no audio track. Capture the built-in Save video export end to
-     end. Hold the final archetype frame: that frame is the thumbnail, the
-     hook, and the whole reason someone runs the command.
-     Also export docs/assets/wrapped.gif — 900x1600, <= 6 MB, ~9 s — because
-     GitHub READMEs do not autoplay mp4.
-
-  2. docs/assets/feed.png — 1400x900, 2x DPR, dark theme. Scroll so the grid
-     shows THREE different card kinds at once — a quote, a chart (the 24-hour
-     clock), and a stat. No cursor in frame.
-
-  ---- uncomment once the files exist ----
-
-  <p align="center">
-    <img src="docs/assets/wrapped.gif" alt="Wrapped: a story ending on your archetype" width="300">
-  </p>
--->
+<p align="center">
+  <a href="https://shatzibitten.github.io/codepend/#/wrapped">
+    <img src="docs/assets/codepend-demo.gif" alt="Codepend turns local coding-agent history into personal cards, charts and a Wrapped-style archetype" width="340">
+  </a>
+</p>
+<p align="center"><sub>Invented demo data. Your own history never leaves your machine.</sub></p>
 
 ---
 
-## What comes back
+## What you get back
 
-Real cards, in the voice they ship in. The numbers are real; the quotes are stand-ins, because the history these were built against belongs to somebody — which is rather the point.
+Not another usage dashboard. A private, browsable story of how you actually work with coding agents:
 
-> `THE FIRST THING YOU EVER TYPED`
-> ### «switch the branch to master»
-> That's it. That's how it started. No hello, no context.
+- **The timeline you forgot.** Your first prompt, longest session, biggest day, late-night stretches, abandoned projects and unexpected returns.
+- **Habits hidden across separate chats.** The phrases you repeat, how often you interrupt, when you work, which languages you switch between and how each agent shows up in your work.
+- **Where the work went.** Time by project, models and tools used, activity patterns and estimated token cost — with the original moments beside the totals.
+- **An ending worth keeping.** Tap through a Wrapped-style story, discover one of twelve coding archetypes, then save a card or export a vertical clip.
 
-> `MANNERS`
-> ### 3 thank-yous in 6 months.
-> It has thanked you 214 times in the same period. Someone here has better manners and it isn't the human.
+Use it as a personal retrospective, a record of a project that consumed a month, or simply a way to notice patterns no single chat can show you.
 
-> `THE STOP BUTTON`
-> ### You stopped it mid-sentence 122 times.
-> Once every 13 messages. It never took it personally.
-
-> `THE LATE SHIFT`
-> ### 41 conversations that started after midnight.
-> The latest at 3:47 AM on July 12. Nobody else was awake. It was.
-
-> `THE BILL`
-> ### $3,450.
-> 94% of it was the same context, read back to it again and again, because it cannot remember you.
-
-Thirty-one more of these, then a Wrapped-style story you can tap through, then a 9:16 clip you can post.
-
-It ends by telling you which of twelve people you are. Find out on your own machine.
-
-**Used your agent for a week?** That case was designed first. Three days of history still makes thirteen real cards, and not one of them says "not enough data".
-
-**Unlike Wrapped, this isn't annual.** "On This Day" works in August, and the page gets better the longer you leave it running.
+You do not need a year of history. It is designed to be useful after a week and to become more revealing over time. “On This Day” also brings old moments back throughout the year, so a later run does more than update the totals.
 
 ---
 
